@@ -1,0 +1,59 @@
+###############################################
+##
+##  Copyright (2019, ) Institute of Software
+##      Chinese Academy of Sciences
+##          wuheng@iscas.ac.cn
+##
+###############################################
+
+
+TABLE_DNS="DNS"
+TABLE_ACL="ACL"
+TABLE_SWITCH="Logical_Switch"
+TABLE_LOADBALANCER="Load_Balancer"
+TABLE_GATEWAY="Gateway_Chassis"
+TABLE_ROUTER="Logical_Router"
+TABLE_LRSR="Logical_Router_Static_Route"
+
+TABLE_LRP="Logical_Router_Port"
+TABLE_LSP="Logical_Switch_Port"
+TABLE_PORTGROUP="Port_Group"
+
+TABLE_NBG="NB_Global"
+TABLE_METER_BAND="Meter_Band"
+TABLE_METWR="Meter"
+TABLE_ADDR="Address_Set"
+TABLE_QOS="QoS"
+TABLE_NAT="NAT"
+TABLE_CONN="Connection"
+TABLE_SSL="SSL"
+TABLE_DHCPO="DHCP_Options"
+
+function getSwitchID() 
+{
+  switch=$(ovn-nbctl ls-list | grep "($1)")
+
+  if [[ -z $switch ]]
+  then
+    echo "switch not exist"
+    exit 1
+  fi
+
+  echo $(echo $switch | awk '{print$1}') 
+}
+
+function getSwitchInfo()
+{
+  echo $(ovn-nbctl --format=json list Logical_Switch $1)  
+}
+
+function createSwitch()
+{
+  ovn-nbctl ls-add $1
+  #subnet: 192.168.0.0/24
+  ovn-nbctl set Logical_Switch $1 other_config:subnet=$2
+}
+
+sid=$(getSwitchID $1)
+sinfo=$(getSwitchInfo $sid)
+echo $sinfo
