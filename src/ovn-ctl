@@ -54,6 +54,16 @@ function createSwitch()
   ovn-nbctl set Logical_Switch $1 other_config:subnet=$2
 }
 
+function getIface()
+{
+  echo $(ovs-vsctl get interface $1 external_ids:iface-id | sed s/\"//g)
+}
+
+function getMac()
+{
+  echo $(ovs-vsctl get interface $1 external_ids:attached-mac | sed s/\"//g)
+}
+
 sid=$(getSwitchID $1)
 sinfo=$(getSwitchInfo $sid)
 echo $sinfo
