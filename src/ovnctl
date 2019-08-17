@@ -159,7 +159,7 @@ function create-swport()
   fi
 
   sid=$($NB_CMD ls-list | grep "($name)" |awk '{print$1}')
-  if [[ -z $sid ]]
+  if [[ -n $sid ]]
   then
     echo "cannot connect the master or the switch name does not exist"
     exit 1
@@ -179,6 +179,30 @@ function create-swport()
   NB_CMD lsp-add $switch $iface
   NB_CMD lsp-set-addresses $iface "$ifmac $ip"
   NB_CMD lsp-set-dhcpv4-options $iface $dhcpid
+}
+
+## Remove a switch port
+
+function remove-swport()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $name || -z $switch || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name      \tvirtual NIC name"
+    exit 1
+  fi
+
+  nic=$(ovs-vsctl show | grep \""$name\"")
+  if [[ -z $nic ]]
+  then
+    echo "NIC does not exist"
+    exit 1
+  fi
+
+  iface=$(getIface)
+  NB_CMD lsp-del $iface
 }
 
 ## All Helps
