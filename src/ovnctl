@@ -63,7 +63,7 @@ function dhcp()
   master # ovn-nbctl lsp-set-dhcpv4-options fee1a864-db30-4523-9568-dae1c01c69e4 b3460fec-4b8d-4078-b7f8-34c51a8adc3e
 }
 
-## Create switch with a default DHCP
+## Create a switch with a default DHCP
 
 function create-switch()
 {
@@ -107,6 +107,32 @@ function create-switch()
 }
 
 
+## Remove a switch and the related DHCP
+
+function remove-switch()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $name || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name  \tswitch name"
+    exit 1
+  fi
+
+  res=$($NB_CMD ls-list | grep "($name)")
+  if [[ -z $res ]]
+  then
+    echo "cannot connect the master or the switch name does not exist"
+    exit 1
+  fi
+  
+  router='r4'$name
+  $NB_CMD ls-del $name
+  $NB_CMD lr-del $router
+}
+
+
 ## All Helps
 
 function help()
@@ -138,7 +164,7 @@ case $1 in
     create-switch $*
     ;;
   "remove-switch")
-    echo "remove-switch"
+    remove-switch $*
     ;;
   "create-swport")
     echo "create-swport"
