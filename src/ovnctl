@@ -29,7 +29,7 @@ TABLE_QOS="QoS"
 TABLE_NAT="NAT"
 TABLE_CONN="Connection"
 TABLE_SSL="SSL"
-TABLE_DHCPO="DHCP_Options"
+TABLE_DHCP="DHCP_Options"
 
 
 ## OVN core
@@ -54,14 +54,14 @@ function getMac()
   echo $(ovs-vsctl get interface $1 external_ids:attached-mac | sed s/\"//g)
 }
 
-function dhcp()
-{
-  switch # ovn-nbctl set Logical_Switch ls1 other_config:subnet=192.168.1.0/24
-  worker # ovs-vsctl set interface vnet6 external_ids:iface-id=fee1a864-db30-4523-9568-dae1c01c69e4
-  master # ovn-nbctl lsp-add ls1 fee1a864-db30-4523-9568-dae1c01c69e4
-  master # ovn-nbctl lsp-set-addresses fee1a864-db30-4523-9568-dae1c01c69e4 "52:54:00:50:72:ea dynamic/static"
-  master # ovn-nbctl lsp-set-dhcpv4-options fee1a864-db30-4523-9568-dae1c01c69e4 b3460fec-4b8d-4078-b7f8-34c51a8adc3e
-}
+#function dhcp()
+#{
+#  switch # ovn-nbctl set Logical_Switch ls1 other_config:subnet=192.168.1.0/24
+#  worker # ovs-vsctl set interface vnet6 external_ids:iface-id=fee1a864-db30-4523-9568-dae1c01c69e4
+#  master # ovn-nbctl lsp-add ls1 fee1a864-db30-4523-9568-dae1c01c69e4
+#  master # ovn-nbctl lsp-set-addresses fee1a864-db30-4523-9568-dae1c01c69e4 "52:54:00:50:72:ea dynamic/static"
+#  master # ovn-nbctl lsp-set-dhcpv4-options fee1a864-db30-4523-9568-dae1c01c69e4 b3460fec-4b8d-4078-b7f8-34c51a8adc3e
+#}
 
 ## Create a switch with a default DHCP
 
@@ -78,8 +78,8 @@ function create-switch()
     exit 1
   fi
 
-  res=$($NB_CMD ls-list | grep "($name)")
-  if [[ -n $res ]]
+  sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
+  if [[ -n $sid ]]
   then
     echo "cannot connect the master or the switch name exists"
     exit 1
@@ -103,7 +103,8 @@ function create-switch()
 
   dmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
   dip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".128" 
-  $NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$dip\" \"server_mac\"=\"$dmac\" \"lease_time\"=\"3600\" \"router\"=\"$dip\""
+  sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
+  $NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$dip\" \"server_mac\"=\"$dmac\" \"lease_time\"=\"3600\" \"router\"=\"$dip\" \"$name\"=\"$sid\""
 }
 
 
@@ -120,18 +121,57 @@ function remove-switch()
     exit 1
   fi
 
-  res=$($NB_CMD ls-list | grep "($name)")
-  if [[ -z $res ]]
+  sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
+  if [[ -z $sid ]]
   then
     echo "cannot connect the master or the switch name does not exist"
     exit 1
   fi
   
   router='r4'$name
+  dhcpid=$(ovn-nbctl list DHCP_Options  | grep -B 3 "$sid"  | grep "_uuid" | awk -F":" '{print$2}')
   $NB_CMD ls-del $name
   $NB_CMD lr-del $router
+  $NB_CMD dhcp-options-del $dhcpid
 }
 
+
+## Create a switch port
+
+function create-swport()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $name || -z $switch || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--switch    \tswitch name"
+    echo -e "--name      \tvirtual NIC name"
+    exit 1
+  fi
+
+  sid=$($NB_CMD ls-list | grep "($name)" |awk '{print$1}')
+  if [[ -z $sid ]]
+  then
+    echo "cannot connect the master or the switch name does not exist"
+    exit 1
+  fi
+
+  nic=$(ovs-vsctl show | grep \""$name\"")
+  if [[ -z $nic ]]
+  then
+    echo "NIC does not exist"
+    exit 1
+  fi
+
+  iface=$(getIface)
+  ifmac=$(getMac)
+  ovs-vsctl set interface $name external_ids:iface-id=$iface
+  NB_CMD lsp-add $switch $iface
+  NB_CMD lsp-set-addresses $iface "$ifmac dynamic/static"
+  NB_CMD lsp-set-dhcpv4-options $iface $sid
+}
 
 ## All Helps
 
@@ -139,8 +179,8 @@ function help()
 {
   cmddesc
   echo -e "Commands:"
-  echo -e "  create-router:\tCreate a router for a specified switch"
-  echo -e "  remove-router:\tRemove a router from a specified switch"
+#  echo -e "  create-router:\tCreate a router for a specified switch"
+#  echo -e "  remove-router:\tRemove a router from a specified switch"
   echo -e "  create-switch:\tCreate a switch with a dhcp"
   echo -e "  remove-switch:\tRemove a switch and the related dhcp"
   echo -e "  create-swport:\tCreate a switch port"
@@ -167,10 +207,10 @@ case $1 in
     remove-switch $*
     ;;
   "create-swport")
-    echo "create-swport"
+    create-swport $*
     ;;
   "remove-swport")
-    echo "remove-swport"
+    echo remove-swport $*
     ;;
   "--help")
     help
