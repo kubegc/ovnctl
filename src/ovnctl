@@ -3,9 +3,11 @@
 ##  Copyright (2019, ) Institute of Software
 ##      Chinese Academy of Sciences
 ##          wuheng@iscas.ac.cn
+##              2019-8-17
 ##
 ###############################################
 
+## OVN Tables
 
 TABLE_DNS="DNS"
 TABLE_ACL="ACL"
@@ -29,30 +31,18 @@ TABLE_CONN="Connection"
 TABLE_SSL="SSL"
 TABLE_DHCPO="DHCP_Options"
 
-function getSwitchID() 
-{
-  switch=$(ovn-nbctl ls-list | grep "($1)")
 
-  if [[ -z $switch ]]
-  then
-    echo "switch not exist"
-    exit 1
-  fi
+## OVN core
+MASTER=$(cat /root/.kube/config  | grep server |awk -F"server:" '{print$2}' | awk -F"https://" '{print$2}' | awk -F":" '{print$1}')
 
-  echo $(echo $switch | awk '{print$1}') 
-}
+NB_PORT="6641"
+SB_PORT="6642"
 
-function getSwitchInfo()
-{
-  echo $(ovn-nbctl --format=json list Logical_Switch $1)  
-}
+NB_CMD="ovn-nbctl --db=tcp:$MASTER:$NB_PORT"
+SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
 
-function createSwitch()
-{
-  ovn-nbctl ls-add $1
-  #subnet: 192.168.0.0/24
-  ovn-nbctl set Logical_Switch $1 other_config:subnet=$2
-}
+## OVN plugin version
+VERSION="1.0.0"
 
 function getIface()
 {
@@ -73,6 +63,94 @@ function dhcp()
   master # ovn-nbctl lsp-set-dhcpv4-options fee1a864-db30-4523-9568-dae1c01c69e4 b3460fec-4b8d-4078-b7f8-34c51a8adc3e
 }
 
-sid=$(getSwitchID $1)
-sinfo=$(getSwitchInfo $sid)
-echo $sinfo
+## Create switch with a default DHCP
+
+function create-switch()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  subn=$(echo $* | awk -F"--subnet" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $name || -z $subn || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name  \tswitch name"
+    echo -e "--subnet\tIP range. for example, 192.168.1.0/24" 
+    exit 1
+  fi
+
+  res=$($NB_CMD ls-list | grep "($name)")
+  if [[ -n $res ]]
+  then
+    echo "cannot connect the master or the switch name exists"
+    exit 1
+  fi
+  
+  router='r4'$name
+  rport='rp4'$name
+  rmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  rip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".1"
+  rmk=$(echo $subn | awk -F"/" '{print$2}')
+  $NB_CMD lr-add $router
+  $NB_CMD lrp-add $router $rport $rmac $rip"/"$rmk
+  
+  sport='sp4'$name
+  $NB_CMD ls-add $name
+  $NB_CMD set Logical_Switch $name other_config:subnet=$subn
+  $NB_CMD lsp-add $name $sport
+  $NB_CMD lsp-set-type $sport router
+  $NB_CMD lsp-set-addresses $sport $rmac
+  $NB_CMD lsp-set-options $sport router-port=$rport
+
+  dmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  dip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".128" 
+  $NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$dip\" \"server_mac\"=\"$dmac\" \"lease_time\"=\"3600\" \"router\"=\"$dip\""
+}
+
+
+## All Helps
+
+function help()
+{
+  cmddesc
+  echo -e "Commands:"
+  echo -e "  create-router:\tCreate a router for a specified switch"
+  echo -e "  remove-router:\tRemove a router from a specified switch"
+  echo -e "  create-switch:\tCreate a switch with a dhcp"
+  echo -e "  remove-switch:\tRemove a switch and the related dhcp"
+  echo -e "  create-swport:\tCreate a switch port"
+  echo -e "  remove-swport:\tDelete a switch port"
+}
+
+function cmddesc()
+{
+  echo -e "Welcome to ovnctl, the ovn plugin for Kubernetes."
+  echo -e "ovnctl($VERSION): missing command name (use --help for help)\n"
+}
+
+case $1 in
+  "create-router")
+    echo "create-router"
+    ;;
+  "remove-router")
+    echo "remove-router"
+    ;;
+  "create-switch")
+    create-switch $*
+    ;;
+  "remove-switch")
+    echo "remove-switch"
+    ;;
+  "create-swport")
+    echo "create-swport"
+    ;;
+  "remove-swport")
+    echo "remove-swport"
+    ;;
+  "--help")
+    help
+    ;;
+  *)
+  help
+  ;;
+esac
+
