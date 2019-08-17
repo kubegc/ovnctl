@@ -148,7 +148,14 @@ function create-swport()
     cmddesc
     echo -e "--switch    \tswitch name"
     echo -e "--name      \tvirtual NIC name"
+    echo -e "--ip        \tvirtual NIC IP (optional)"
     exit 1
+  fi
+
+  ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
+  if [[ -z $ip ]]
+  then
+    ip='dynamic'
   fi
 
   sid=$($NB_CMD ls-list | grep "($name)" |awk '{print$1}')
@@ -168,9 +175,10 @@ function create-swport()
   iface=$(getIface)
   ifmac=$(getMac)
   ovs-vsctl set interface $name external_ids:iface-id=$iface
+  dhcpid=$(ovn-nbctl list DHCP_Options  | grep -B 3 "$sid"  | grep "_uuid" | awk -F":" '{print$2}')
   NB_CMD lsp-add $switch $iface
-  NB_CMD lsp-set-addresses $iface "$ifmac dynamic/static"
-  NB_CMD lsp-set-dhcpv4-options $iface $sid
+  NB_CMD lsp-set-addresses $iface "$ifmac $ip"
+  NB_CMD lsp-set-dhcpv4-options $iface $dhcpid
 }
 
 ## All Helps
