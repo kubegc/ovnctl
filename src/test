@@ -1,4 +1,0 @@
-net="192.168.1.0/24"
-rip=$(echo $net | awk -F"." '{print$1"."$2"."$3}')".1"
-rmk=$(echo $net | awk -F"/" '{print$2}')
-echo $rip"/"$rmk
