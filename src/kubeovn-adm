@@ -141,12 +141,12 @@ function remove-switch()
 function create-swport()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
-  switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
+  switch=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
   
   if [[ -z $1 || -z $name || -z $switch || $2 == "--help" ]]
   then
     cmddesc
-    echo -e "--switch    \tswitch name"
+    echo -e "--swName    \tswitch name"
     echo -e "--name      \tvirtual NIC name"
     echo -e "--ip        \tvirtual NIC IP (optional)"
     exit 1
