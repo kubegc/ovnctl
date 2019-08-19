@@ -242,7 +242,7 @@ case $1 in
     create-swport $*
     ;;
   "remove-swport")
-    echo remove-swport $*
+    remove-swport $*
     ;;
   "--help")
     help
