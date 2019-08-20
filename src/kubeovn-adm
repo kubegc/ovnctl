@@ -206,18 +206,46 @@ function remove-swport()
   NB_CMD lsp-del $iface
 }
 
+# Set vlan id for port
+
+## Create a switch port
+
+function setport-vlan()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $name || -z $vlan || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name      \tvirtual NIC name"
+    echo -e "--vlan      \tvlan id"
+    exit 1
+  fi
+
+  vnet=$(ovs-vsctl show | grep "\"$name\"" | grep Port)
+  
+  if [[ -z $vnet ]]
+  then
+    echo "NIC not exist."
+    exit 1
+  fi
+
+  ovs-vsctl set port $name tag=$vlan
+}
+
 ## All Helps
 
 function help()
 {
   cmddesc
   echo -e "Commands:"
-#  echo -e "  create-router:\tCreate a router for a specified switch"
-#  echo -e "  remove-router:\tRemove a router from a specified switch"
   echo -e "  create-switch:\tCreate a switch with a dhcp"
   echo -e "  remove-switch:\tRemove a switch and the related dhcp"
   echo -e "  create-swport:\tCreate a switch port"
   echo -e "  remove-swport:\tDelete a switch port"
+  echo -e "  setport-vlan :\tSet Port with vlan ID"
+  echo -e "  setport-vxlan:\tSet Port with vxlan ID"
 }
 
 function cmddesc()
@@ -227,12 +255,6 @@ function cmddesc()
 }
 
 case $1 in
-  "create-router")
-    echo "create-router"
-    ;;
-  "remove-router")
-    echo "remove-router"
-    ;;
   "create-switch")
     create-switch $*
     ;;
@@ -244,6 +266,9 @@ case $1 in
     ;;
   "remove-swport")
     remove-swport $*
+    ;;
+  "setport-vlan")
+    setport-vlan $*
     ;;
   "--help")
     help
