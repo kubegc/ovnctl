@@ -126,7 +126,7 @@ function remove-switch()
   fi
   
   router='r4'$name
-  dhcpid=$(ovn-nbctl list DHCP_Options  | grep -B 3 "$sid"  | grep "_uuid" | awk -F":" '{print$2}')
+  dhcpid=$($NB_CMD list DHCP_Options  | grep -B 3 "$sid"  | grep "_uuid" | awk -F":" '{print$2}')
   $NB_CMD ls-del $name
   $NB_CMD lr-del $router
   $NB_CMD dhcp-options-del $dhcpid
