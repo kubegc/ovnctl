@@ -208,8 +208,6 @@ function remove-swport()
 
 # Set vlan id for port
 
-## Create a switch port
-
 function setport-vlan()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
@@ -234,6 +232,37 @@ function setport-vlan()
   ovs-vsctl set port $name tag=$vlan
 }
 
+# Delete port's vlan id
+
+function delport-vlan()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $name || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name      \tvirtual NIC name"
+    exit 1
+  fi
+
+  vnet=$(ovs-vsctl show | grep "\"$name\"" | grep Port)
+
+  if [[ -z $vnet ]]
+  then
+    echo "NIC not exist."
+    exit 1
+  fi
+
+  vlan=$(ovs-vsctl get port $name tag)
+
+  if [[ vlan=="[]" ]]
+  then
+    exit 0
+  fi
+  
+  ovs-vsctl remove port $name tag $vlan
+}
+
 ## All Helps
 
 function help()
@@ -244,7 +273,8 @@ function help()
   echo -e "  remove-switch:\tRemove a switch and the related dhcp"
   echo -e "  create-swport:\tCreate a switch port"
   echo -e "  remove-swport:\tDelete a switch port"
-  echo -e "  setport-vlan :\tSet Port with vlan ID"
+  echo -e "  setport-vlan :\tSet port with vlan ID"
+  echo -e "  delport-vlan :\tDelete port's vlan ID"
   echo -e "  setport-vxlan:\tSet Port with vxlan ID"
 }
 
@@ -269,6 +299,9 @@ case $1 in
     ;;
   "setport-vlan")
     setport-vlan $*
+    ;;
+  "delport-vlan")
+    delport-vlan $*
     ;;
   "--help")
     help
