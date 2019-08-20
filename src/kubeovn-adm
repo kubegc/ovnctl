@@ -255,7 +255,7 @@ function delport-vlan()
 
   vlan=$(ovs-vsctl get port $name tag)
 
-  if [[ vlan=="[]" ]]
+  if echo $vlan | grep -q '[^0-9]'
   then
     exit 0
   fi
@@ -275,7 +275,6 @@ function help()
   echo -e "  remove-swport:\tDelete a switch port"
   echo -e "  setport-vlan :\tSet port with vlan ID"
   echo -e "  delport-vlan :\tDelete port's vlan ID"
-  echo -e "  setport-vxlan:\tSet Port with vxlan ID"
 }
 
 function cmddesc()
