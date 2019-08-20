@@ -45,10 +45,6 @@ SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
 ## OVN plugin version
 VERSION="1.0.0"
 
-function getIface()
-{
-  echo $(ovs-vsctl get interface $1 external_ids:iface-id | sed s/\"//g)
-}
 
 function getMac()
 {
@@ -159,8 +155,8 @@ function create-swport()
     ip='dynamic'
   fi
 
-  sid=$($NB_CMD ls-list | grep "($name)" |awk '{print$1}')
-  if [[ -n $sid ]]
+  sid=$($NB_CMD ls-list | grep "($switch)" |awk '{print$1}')
+  if [[ -z $sid ]]
   then
     echo "cannot connect the master or the switch name does not exist"
     exit 1
@@ -173,13 +169,13 @@ function create-swport()
     exit 1
   fi
 
-  iface=$(getIface)
-  ifmac=$(getMac)
+  iface=$(ovs-vsctl get interface $name external_ids:iface-id | sed s/\"//g)
+  ifmac=$(ovs-vsctl get interface $name external_ids:attached-mac | sed s/\"//g)
   ovs-vsctl set interface $name external_ids:iface-id=$iface
-  dhcpid=$(ovn-nbctl list DHCP_Options  | grep -B 3 "$sid"  | grep "_uuid" | awk -F":" '{print$2}')
-  NB_CMD lsp-add $switch $iface
-  NB_CMD lsp-set-addresses $iface "$ifmac $ip"
-  NB_CMD lsp-set-dhcpv4-options $iface $dhcpid
+  dhcpid=$($NB_CMD list DHCP_Options  | grep -B 3 "$sid"  | grep "_uuid" | awk -F":" '{print$2}')
+  $NB_CMD lsp-add $switch $iface
+  $NB_CMD lsp-set-addresses $iface "$ifmac $ip"
+  $NB_CMD lsp-set-dhcpv4-options $iface $dhcpid
 }
 
 ## Remove a switch port
@@ -188,7 +184,7 @@ function remove-swport()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
   
-  if [[ -z $1 || -z $name || -z $switch || $2 == "--help" ]]
+  if [[ -z $1 || -z $name || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name      \tvirtual NIC name"
@@ -202,8 +198,8 @@ function remove-swport()
     exit 1
   fi
 
-  iface=$(getIface)
-  NB_CMD lsp-del $iface
+  iface=$(ovs-vsctl get interface $name external_ids:iface-id | sed s/\"//g)
+  $NB_CMD lsp-del $iface
 }
 
 # Set vlan id for port
