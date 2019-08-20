@@ -62,7 +62,6 @@ cp ifcfg-br-native /etc/sysconfig/network-scripts/ifcfg-br-native
 
 ovs-vsctl del-br br-native --if-exist
 ovs-vsctl add-br br-native 
-ovs-vsctl add-port br-native $1
 
 ## new ifcfg-$ORG
 
@@ -103,4 +102,4 @@ then
 fi
 
 
-systemctl restart network
+ovs-vsctl add-port br-native $1; systemctl restart network
