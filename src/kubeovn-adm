@@ -49,6 +49,12 @@ SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
 ## OVN plugin version
 VERSION="1.0.0"
 
+
+function getMac()
+{
+  echo $(ovs-vsctl get interface $1 external_ids:attached-mac | sed s/\"//g)
+}
+
 #function dhcp()
 #{
 #  switch # ovn-nbctl set Logical_Switch ls1 other_config:subnet=192.168.1.0/24
@@ -131,9 +137,9 @@ function remove-switch()
 }
 
 
-## Create a switch port
+## Bind a switch port
 
-function create-swport()
+function bind-swport()
 {
   mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
   switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
@@ -178,9 +184,9 @@ function create-swport()
   ovs-vsctl set interface $name external_ids:iface-id=$iface
 }
 
-## Remove a switch port
+## Unbind a switch port
 
-function remove-swport()
+function unbind-swport()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
   
@@ -267,8 +273,8 @@ function help()
   echo -e "Commands:"
   echo -e "  create-switch:\tCreate a switch with a dhcp"
   echo -e "  remove-switch:\tRemove a switch and the related dhcp"
-  echo -e "  create-swport:\tCreate a switch port"
-  echo -e "  remove-swport:\tDelete a switch port"
+  echo -e "  bind-swport  :\tBind a switch port"
+  echo -e "  unbind-swport:\tUnbind a switch port"
   echo -e "  setport-vlan :\tSet port with vlan ID"
   echo -e "  delport-vlan :\tDelete port's vlan ID"
 }
@@ -286,11 +292,11 @@ case $1 in
   "remove-switch")
     remove-switch $*
     ;;
-  "create-swport")
-    create-swport $*
+  "bind-swport")
+    bind-swport $*
     ;;
-  "remove-swport")
-    remove-swport $*
+  "unbind-swport")
+    unbind-swport $*
     ;;
   "setport-vlan")
     setport-vlan $*
