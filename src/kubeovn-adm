@@ -49,12 +49,6 @@ SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
 ## OVN plugin version
 VERSION="1.0.0"
 
-
-function getMac()
-{
-  echo $(ovs-vsctl get interface $1 external_ids:attached-mac | sed s/\"//g)
-}
-
 #function dhcp()
 #{
 #  switch # ovn-nbctl set Logical_Switch ls1 other_config:subnet=192.168.1.0/24
