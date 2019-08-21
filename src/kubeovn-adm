@@ -188,15 +188,16 @@ function bind-swport()
 
 function unbind-swport()
 {
-  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
   
-  if [[ -z $1 || -z $name || $2 == "--help" ]]
+  if [[ -z $1 || -z $mac || $2 == "--help" ]]
   then
     cmddesc
-    echo -e "--name      \tvirtual NIC name"
+    echo -e "--mac      \tvirtual NIC mac"
     exit 1
   fi
 
+  name=$(ip a | grep -B 1 "$mac" | awk -F":" 'NR==1{print$2}')
   nic=$(ovs-vsctl show | grep \""$name\"")
   if [[ -z $nic ]]
   then
