@@ -8,6 +8,10 @@
 ##
 ###############################################
 
+## Locate library
+
+export LD_LIBRARY_PATH="/usr/lib64"
+
 ## OVN Tables
 
 TABLE_DNS="DNS"
@@ -137,19 +141,21 @@ function remove-switch()
 
 function create-swport()
 {
-  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
-  switch=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
+  switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
   
-  if [[ -z $1 || -z $name || -z $switch || $2 == "--help" ]]
+  if [[ -z $1 || -z $mac || -z $switch || $2 == "--help" ]]
   then
     cmddesc
-    echo -e "--swName    \tswitch name"
-    echo -e "--name      \tvirtual NIC name"
+    echo -e "--switch    \tswitch name"
+    echo -e "--mac       \tvirtual NIC mac"
     echo -e "--ip        \tvirtual NIC IP (optional)"
     exit 1
   fi
 
+  name=$(ip a | grep -B 1 "$mac" | awk -F":" 'NR==1{print$2}')
   ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
+  
   if [[ -z $ip ]]
   then
     ip='dynamic'
@@ -171,11 +177,11 @@ function create-swport()
 
   iface=$(ovs-vsctl get interface $name external_ids:iface-id | sed s/\"//g)
   ifmac=$(ovs-vsctl get interface $name external_ids:attached-mac | sed s/\"//g)
-  ovs-vsctl set interface $name external_ids:iface-id=$iface
   dhcpid=$($NB_CMD list DHCP_Options  | grep -B 3 "$sid"  | grep "_uuid" | awk -F":" '{print$2}')
   $NB_CMD lsp-add $switch $iface
   $NB_CMD lsp-set-addresses $iface "$ifmac $ip"
   $NB_CMD lsp-set-dhcpv4-options $iface $dhcpid
+  ovs-vsctl set interface $name external_ids:iface-id=$iface
 }
 
 ## Remove a switch port
