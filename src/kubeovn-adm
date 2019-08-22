@@ -104,8 +104,8 @@ function create-switch()
 
   #dmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
   #dip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".128" 
-  sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
-  $NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\" \"switch\"=\"$sid\""
+  did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\"")
+  $NB_CMD lsp-add $name "dhcpv4id-$name-"$did
 }
 
 
@@ -130,7 +130,7 @@ function remove-switch()
   fi
   
   router='r4'$name
-  dhcpid=$($NB_CMD list DHCP_Options  | grep -B 3 "$sid"  | grep "_uuid" | awk -F":" '{print$2}')
+  dhcpid=$($NB_CMD show | grep "dhcpv4id-$name-" | awk -F"dhcpv4id-$name-" '{print$2}')
   $NB_CMD ls-del $name
   $NB_CMD lr-del $router
   $NB_CMD dhcp-options-del $dhcpid
@@ -177,7 +177,7 @@ function bind-swport()
 
   iface=$(ovs-vsctl get interface $name external_ids:iface-id | sed s/\"//g)
   ifmac=$(ovs-vsctl get interface $name external_ids:attached-mac | sed s/\"//g)
-  dhcpid=$($NB_CMD list DHCP_Options  | grep -B 3 "$sid"  | grep "_uuid" | awk -F":" '{print$2}')
+  dhcpid=$($NB_CMD show | grep "dhcpv4id-$switch-" | awk -F"dhcpv4id-$switch-" '{print$2}')
   $NB_CMD lsp-add $switch $iface
   $NB_CMD lsp-set-addresses $iface "$ifmac $ip"
   $NB_CMD lsp-set-dhcpv4-options $iface $dhcpid
