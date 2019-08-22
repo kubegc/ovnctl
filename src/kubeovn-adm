@@ -197,15 +197,12 @@ function unbind-swport()
     exit 1
   fi
 
-  name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
-  nic=$(ovs-vsctl show | grep \""$name\"")
-  if [[ -z $nic ]]
+  iface=$($NB_CMD show | grep -B 1 "$mac"  | grep port | awk '{print$2}')
+  if [[ -z $iface ]]
   then
-    echo "NIC does not exist"
+    echo "mac does not exist"
     exit 1
   fi
-
-  iface=$(ovs-vsctl get interface $name external_ids:iface-id | sed s/\"//g)
   $NB_CMD lsp-del $iface
 }
 
