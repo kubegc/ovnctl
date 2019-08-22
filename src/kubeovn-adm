@@ -102,10 +102,10 @@ function create-switch()
   $NB_CMD lsp-set-addresses $sport $rmac
   $NB_CMD lsp-set-options $sport router-port=$rport
 
-  dmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
-  dip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".128" 
+  #dmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  #dip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".128" 
   sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
-  $NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$dip\" \"server_mac\"=\"$dmac\" \"lease_time\"=\"3600\" \"router\"=\"$dip\" \"$name\"=\"$sid\""
+  $NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\" \"switch\"=\"$sid\""
 }
 
 
