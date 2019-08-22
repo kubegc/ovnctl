@@ -49,6 +49,21 @@ SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
 ## OVN plugin version
 VERSION="1.0.0"
 
+
+function getMac()
+{
+  echo $(ovs-vsctl get interface $1 external_ids:attached-mac | sed s/\"//g)
+}
+
+#function dhcp()
+#{
+#  switch # ovn-nbctl set Logical_Switch ls1 other_config:subnet=192.168.1.0/24
+#  worker # ovs-vsctl set interface vnet6 external_ids:iface-id=fee1a864-db30-4523-9568-dae1c01c69e4
+#  master # ovn-nbctl lsp-add ls1 fee1a864-db30-4523-9568-dae1c01c69e4
+#  master # ovn-nbctl lsp-set-addresses fee1a864-db30-4523-9568-dae1c01c69e4 "52:54:00:50:72:ea dynamic/static"
+#  master # ovn-nbctl lsp-set-dhcpv4-options fee1a864-db30-4523-9568-dae1c01c69e4 b3460fec-4b8d-4078-b7f8-34c51a8adc3e
+#}
+
 ## Create a switch with a default DHCP
 
 function create-switch()
@@ -140,6 +155,14 @@ function bind-swport()
 
   name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
   ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
+
+  duplicate=$(NB_CMD show | grep "$mac")
+
+  if [[ -n $duplicate ]]
+  then
+    echo "mac exists"
+    exit 1
+  fi
   
   if [[ -z $ip ]]
   then
@@ -182,7 +205,7 @@ function unbind-swport()
     exit 1
   fi
 
-  iface=$($NB_CMD show | grep -B 1 "$mac"  | grep port | awk '{print$2}')
+  iface=$($NB_CMD show | grep -B 1 "$mac"  | grep port | awk 'NR==1{print$2}')
   if [[ -z $iface ]]
   then
     echo "mac does not exist"
