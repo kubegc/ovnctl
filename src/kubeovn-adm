@@ -153,8 +153,7 @@ function bind-swport()
     exit 1
   fi
 
-  rname=$(ip a | grep -B 1 "$mac" | awk -F":" 'NR==1{print$2}')
-  name=$(echo $rname | sed 's/ //g')
+  name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
   ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
   
   if [[ -z $ip ]]
@@ -198,8 +197,7 @@ function unbind-swport()
     exit 1
   fi
 
-  rname=$(ip a | grep -B 1 "$mac" | awk -F":" 'NR==1{print$2}')
-  name=$(echo $rname | sed 's/ //g')
+  name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
   nic=$(ovs-vsctl show | grep \""$name\"")
   if [[ -z $nic ]]
   then
