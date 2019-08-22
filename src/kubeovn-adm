@@ -142,7 +142,7 @@ function bind-swport()
   name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
   ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
 
-  duplicate=$(NB_CMD show | grep "$mac")
+  duplicate=$($NB_CMD show | grep "$mac")
 
   if [[ -n $duplicate ]]
   then
