@@ -28,4 +28,5 @@ ip netns exec net1 ip addr add 133.133.134.178/16 dev eth0
 ip netns exec net1 ip link set eth0 up
 
 ovn-nbctl -- --id=@nat create nat type="dnat_and_snat" logical_ip=192.168.4.7 external_ip=133.133.134.178 -- add logical_router r4ls1 nat @nat
+ovn-nbctl lrp-set-gateway-chassis rp4ls1 d9ff5bef-2db0-4867-a00c-7459cbb4c772(ovn-sbctl)
 ```
