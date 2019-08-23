@@ -26,4 +26,6 @@ ip netns exec net1 ip link set mac1 name eth0
 ip netns exec net1 ip link
 ip netns exec net1 ip addr add 133.133.134.178/16 dev eth0
 ip netns exec net1 ip link set eth0 up
+
+ovn-nbctl -- --id=@nat create nat type="dnat_and_snat" logical_ip=192.168.4.7 external_ip=133.133.134.178 -- add logical_router r4ls1 nat @nat
 ```
