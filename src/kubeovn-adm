@@ -377,10 +377,77 @@ function help()
   echo -e "  remove-switch:\tRemove a switch and the related dhcp"
   echo -e "  bind-swport  :\tBind a switch port"
   echo -e "  unbind-swport:\tUnbind a switch port"
-#  echo -e "  setport-vxlan :\tSet port with vxlan ID"
-#  echo -e "  delport-vxlan :\tDelete port's vxlan ID"
   echo -e "  setport-vlan :\tSet port with vlan ID"
   echo -e "  delport-vlan :\tDelete port's vlan ID"
+  echo -e "  create-fip   :\tCreate floating IP"
+  echo -e "  delete-fip   :\tDelete floating IP"
+}
+
+
+function create-fip()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $name || -z $ip || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name      \tPhysical NIC mac"
+    echo -e "--ip        \tFloating IP"
+    exit 1
+  fi
+
+  ne=$(ip a | grep $name)
+  if [[ -z $ne ]]
+  then
+    echo "Physical NIC not exist"
+    exit 1
+  fi
+
+  ie=$(ip a | grep $ip)
+  if [[ -n $ie ]]
+  then
+    echo "IP exist"
+    exit 1
+  fi 
+
+  for i in `seq 1 1000`
+  do
+    fname=$name":"$i
+    if [[ -f /etc/sysconfig/network-scripts/ifcfg-$fname ]]
+    then
+      continue
+    fi
+    mask=$(ip a | grep -A 1 ens37 | grep inet | awk 'NR==1' |awk '{print$2}' | awk -F"/" '{print$2}')
+    rm -rf /etc/sysconfig/network-scripts/ifcfg-$fname
+    echo "DEVICE=$fname" >> /etc/sysconfig/network-scripts/ifcfg-$fname
+    echo "BOOTPROTO=static" >> /etc/sysconfig/network-scripts/ifcfg-$fname
+    echo "ONBOOT=yes" >> /etc/sysconfig/network-scripts/ifcfg-$fname
+    echo "NM_CONTROLLED=no" >> /etc/sysconfig/network-scripts/ifcfg-$fname
+    echo "IPADDR=$ip" >> /etc/sysconfig/network-scripts/ifcfg-$fname
+    echo "PREFIX=$mask" >> /etc/sysconfig/network-scripts/ifcfg-$fname
+    ifup $fname
+    exit 0
+  done
+
+  echo "too much floating IPs"
+  exit 1   
+
+}
+
+
+function delete-fip()
+{
+  ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
+  fname=$(ip a | grep $ip | awk '{print$8}')
+  if [[ -z $fname ]]
+  then
+    echo "wrong IP, cannot find a NIC with the IP"
+    exit 1
+  fi
+
+  ifdown $fname
+  rm -rf /etc/sysconfig/network-scripts/ifcfg-$fname
 }
 
 function cmddesc()
@@ -419,6 +486,12 @@ case $1 in
     ;;
   "delport-vlan")
     delport-vlan $*
+    ;;
+  "create-fip")
+    create-fip $*
+    ;;
+  "delete-fip")
+    delete-fip $*
     ;;
   "--help")
     help
