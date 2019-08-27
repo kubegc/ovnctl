@@ -369,8 +369,6 @@ function start-worker()
 
 function stop-worker()
 {
-  systemctl stop openvswitch
-  systemctl disable openvswitch
   systemctl stop ovn-controller
   systemctl disable ovn-controller
 }
