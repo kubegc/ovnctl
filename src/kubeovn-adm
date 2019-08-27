@@ -348,6 +348,17 @@ function start-worker()
   master=$(cat /root/.kube/config  | grep server | awk -F":" '{print$3}' | awk -F"//" '{print$2}')
   thisip=$(ip a | grep "br-native" | grep inet | awk '{print$2}' |awk -F"/" '{print$1}')
 
+  if [[ -z $thisip ]]
+  then
+    thisip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
+    ie=$(ip a | grep $ip)
+    if [[ -z $ie ]]
+    then
+      echo "the NIC does not exist, please assign a correct UP using --ip "
+      exit 1
+    fi 
+  fi
+
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
   sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
   sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
@@ -458,10 +469,10 @@ function cmddesc()
 
 case $1 in
   "start-central")
-    start-central
+    start-central $*
     ;;
   "stop-central")
-    stop-central
+    stop-central $*
     ;;
   "start-worker")
     start-worker $*
