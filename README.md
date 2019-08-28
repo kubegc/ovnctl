@@ -46,4 +46,5 @@ iptables -t nat  -D POSTROUTING [num]
 
 ```
 iptables -t nat -A POSTROUTING -s 192.168.5.10/32 -o br-native:1 -j SNAT --to-source 133.133.134.189
+route add -net 192.168.5.10 netmask 255.255.255.255 dev br-native:1
 ```
