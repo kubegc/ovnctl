@@ -36,7 +36,7 @@ ovn-nbctl lrp-set-gateway-chassis rp4ls1 d9ff5bef-2db0-4867-a00c-7459cbb4c772(ov
 
 ```
 iptables -t nat -L -n --line-numbers
-iptables -t nat -A POSTROUTING  -d 192.168.5.10/32 -j SNAT --to-source 133.133.134.189
+iptables -t nat -A POSTROUTING  -s 192.168.5.10/32 -j SNAT --to-source 133.133.134.189
 iptables -t nat -A PREROUTING  -d 133.133.134.189/32 -j DNAT --to-destination 192.168.5.10
 
 iptables -t nat  -D PREROUTING  [num]
