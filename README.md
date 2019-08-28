@@ -43,3 +43,7 @@ iptables -t nat -A PREROUTING  -d 133.133.134.189/32 -j DNAT --to-destination 19
 iptables -t nat  -D PREROUTING  [num]
 iptables -t nat  -D POSTROUTING [num]
 ```
+
+```
+iptables -t nat -A POSTROUTING -s 192.168.5.10/32 -o br-native:1 -j SNAT --to-source 133.133.134.189
+```
