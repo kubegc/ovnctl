@@ -32,3 +32,13 @@ ip netns exec net1 ip link set eth0 up
 ovn-nbctl -- --id=@nat create nat type="dnat_and_snat" logical_ip=192.168.4.7 external_ip=133.133.134.178 -- add logical_router r4ls1 nat @nat
 ovn-nbctl lrp-set-gateway-chassis rp4ls1 d9ff5bef-2db0-4867-a00c-7459cbb4c772(ovn-sbctl)
 ```
+
+
+```
+iptables -t nat -L -n --line-numbers
+iptables -t nat -A POSTROUTING  -d 192.168.5.10/32 -j SNAT --to-source 133.133.134.189
+iptables -t nat -A PREROUTING  -d 133.133.134.189/32 -j DNAT --to-destination 192.168.5.10
+
+iptables -t nat  -D PREROUTING  [num]
+iptables -t nat  -D POSTROUTING [num]
+```
