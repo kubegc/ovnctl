@@ -477,17 +477,18 @@ function bind-fip()
   switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
   vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
-  node=$(echo $* | awk -F"--node" '{print$2}' | awk '{print$1}')
  
-  if [[ -z $1 || -z $switch || -z $node || -z $vmmac || -z $fip || $2 == "--help" ]]
+  if [[ -z $1 || -z $switch || -z $vmmac || -z $fip || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--switch  \tswitch name"
     echo -e "--vmmac   \tvm mac"
     echo -e "--fip     \tflating ip"
-    echo -e "--node     \tnode name"
+    exit 1
+  fi
 
-  name=$(echo ${mac//:/})
+  node=$(hostname)
+  name=$(ovs-vsctl list interface | grep -A 14 "$vmmac" | grep name | awk -F"\"" '{print$2}')
   ne=$(ovs-vsctl show | grep "\"$name\"" | grep Port)
   if [[ -z $ne ]]
   then
@@ -495,7 +496,7 @@ function bind-fip()
     exit 1
   fi
 
-  nuuid=$(ovn-sbctl show | grep -B 1 "$node" | grep Chassis | awk -F"\"" '{print$2}')
+  nuuid=$($SB_CMD show | grep -B 1 "$node" | grep Chassis | awk -F"\"" '{print$2}')
   if [[ -z $nuuid ]]
   then
     echo "wrong node name"
@@ -508,9 +509,9 @@ function bind-fip()
   rport='rp4'$name
 
   $NB_CMD lsp-add $switch $sport
-  $NB_CMD lsp-set-addresses $rport dynamic
-  rip=$($NB_CMD list logical_switch_port abcd | grep dynamic_addresses | awk -F"\"" '{print$2}' | awk '{print$2}')
-  rmac=$($NB_CMD list logical_switch_port abcd | grep dynamic_addresses | awk -F"\"" '{print$2}' | awk '{print$1}')
+  $NB_CMD lsp-set-addresses $sport dynamic
+  rip=$($NB_CMD list logical_switch_port $sport | grep dynamic_addresses | awk -F"\"" '{print$2}' | awk '{print$2}')
+  rmac=$($NB_CMD list logical_switch_port $sport | grep dynamic_addresses | awk -F"\"" '{print$2}' | awk '{print$1}')
   $NB_CMD lsp-del $sport
 
   rmk=$($NB_CMD show 'r4'$switch | grep networks | awk -F"\"" '{print$2}' | awk -F"/" '{print$2}')
@@ -526,7 +527,8 @@ function bind-fip()
   #dhcpid=$($NB_CMD show $switch | grep "dhcpv4id-$name-" | awk -F"dhcpv4id-$switch-" '{print$2}')
   #$NB_CMD lsp-set-dhcpv4-options $sport $dhcpid
 
-  $NB_CMD -- --id=@nat create nat type="dnat_and_snat" logical_ip=$rip external_ip=$fip -- add logical_router $router nat @nat
+  lip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
+  $NB_CMD -- --id=@nat create nat type="dnat_and_snat" logical_ip=$lip external_ip=$fip -- add logical_router $router nat @nat
 }
 
 function unbind-fip()
@@ -534,15 +536,15 @@ function unbind-fip()
   switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
   vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
 
-  if [[ -z $1 || -z $switch || -z $node || -z $vmmac || -z $fip || $2 == "--help" ]]
+  if [[ -z $1 || -z $switch || -z $vmmac || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--switch  \tswitch name"
     echo -e "--vmmac   \tvm mac"
-    echo -e "--fip     \tflating ip"
-    echo -e "--node     \tnode name"
+    exit 1
+  fi
 
-  name=$(echo ${mac//:/})
+  name=$(ovs-vsctl list interface | grep -A 14 "$vmmac" | grep name | awk -F"\"" '{print$2}')
   ne=$(ovs-vsctl show | grep "\"$name\"" | grep Port)
   if [[ -z $ne ]]
   then
@@ -554,6 +556,7 @@ function unbind-fip()
   router='r4'$name
 
   $NB_CMD lr-del $router 
+  $NB_CMD lsp-del $sport
 }
 
 function create-br-c-br()
