@@ -385,6 +385,7 @@ function help()
   echo -e "  stop-worker  :\tStop worker node"
   echo -e "  create-switch:\tCreate a switch with a dhcp"
   echo -e "  remove-switch:\tRemove a switch and the related dhcp"
+  echo -e "  delete-switch:\tRemove a switch and the related dhcp, see remove-switch"
   echo -e "  bind-swport  :\tBind a switch port"
   echo -e "  unbind-swport:\tUnbind a switch port"
   echo -e "  setport-vlan :\tSet port with vlan ID"
@@ -491,6 +492,9 @@ case $1 in
     create-switch $*
     ;;
   "remove-switch")
+    remove-switch $*
+    ;;
+  "delete-switch")
     remove-switch $*
     ;;
   "bind-swport")
