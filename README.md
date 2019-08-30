@@ -1,8 +1,18 @@
 # kubeOVN
 SDN for Kubernetes network
 
+## authors:
 
-# 1. References
+- wuheng@otcaix.iscas.ac.cn
+- wuyuewen@otcaix.iscas.ac.cn
+
+# 1. Features
+
+- VPC
+- static IP
+- floating IP
+
+# 2. References
 
 - http://blog.spinhirne.com/2016/10/ovn-and-acls.html
 - https://zhaozhanxu.com/2017/02/22/SDN/OVN/2017-02-22-ovn-nbdb/
@@ -17,7 +27,7 @@ SDN for Kubernetes network
 - https://upcloud.com/community/tutorials/how-to-configure-floating-ip-on-centos/
 - https://blog.csdn.net/mergerly/article/details/54866230
 
-# 2. Some commands
+# 3. Some commands
 
 ```
 ip netns add net1
