@@ -428,7 +428,7 @@ function create-fip()
     then
       continue
     fi
-    mask=$(ip a | grep -A 1 ens37 | grep inet | awk 'NR==1' |awk '{print$2}' | awk -F"/" '{print$2}')
+    mask=$(ip a | grep -A 1 $name | grep inet | awk 'NR==1' |awk '{print$2}' | awk -F"/" '{print$2}')
     rm -rf /etc/sysconfig/network-scripts/ifcfg-$fname
     echo "DEVICE=$fname" >> /etc/sysconfig/network-scripts/ifcfg-$fname
     echo "BOOTPROTO=static" >> /etc/sysconfig/network-scripts/ifcfg-$fname
@@ -450,6 +450,14 @@ function delete-fip()
 {
   ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
   fname=$(ip a | grep $ip | awk '{print$7}')
+
+  if [[ -z $1 || -z $ip || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--ip        \tFloating IP"
+    exit 1
+  fi
+
   if [[ -z $fname ]]
   then
     echo "wrong IP, cannot find a NIC with the IP"
