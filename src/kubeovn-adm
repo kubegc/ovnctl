@@ -522,7 +522,7 @@ function bind-fip()
   $NB_CMD lsp-set-type $sport router
   $NB_CMD lsp-set-addresses $sport $rmac
   $NB_CMD lsp-set-options $sport router-port=$rport
-  $SB_CMD lrp-set-gateway-chassis $router $nuuid
+  $NB_CMD lrp-set-gateway-chassis $rport $nuuid
 
   #dhcpid=$($NB_CMD show $switch | grep "dhcpv4id-$name-" | awk -F"dhcpv4id-$switch-" '{print$2}')
   #$NB_CMD lsp-set-dhcpv4-options $sport $dhcpid
