@@ -117,9 +117,9 @@ function remove-switch()
   
   router='r4'$name
   dhcpid=$($NB_CMD show $name | grep "dhcpv4id-$name-" | awk -F"dhcpv4id-$name-" '{print$2}')
-  $NB_CMD ls-del $name
-  $NB_CMD lr-del $router
-  $NB_CMD dhcp-options-del $dhcpid
+  $NB_CMD ls-del $name  >/dev/null  2>&1 
+  $NB_CMD lr-del $router >/dev/null  2>&1 
+  $NB_CMD dhcp-options-del $dhcpid >/dev/null  2>&1  
 }
 
 
@@ -326,7 +326,7 @@ function start-central()
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
   sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
 
-  $create-br-c-br
+  #create-br-c-br
 }
 
 function stop-central()
@@ -354,7 +354,7 @@ function start-worker()
   if [[ -z $thisip ]]
   then
     thisip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
-    ie=$(ip a | grep $ip)
+    ie=$(ip a | grep $thisip)
     if [[ -z $ie ]]
     then
       echo "the NIC does not exist, please assign a correct UP using --ip "
@@ -366,7 +366,8 @@ function start-worker()
   sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
   sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$thisip
-  $create-br-c-br
+  
+  create-br-c-br
 }
 
 
@@ -561,6 +562,11 @@ function unbind-fip()
 
 function create-br-c-br()
 {
+  bre=$(ovs-vsctl show | grep br-native)
+  if [[ -z $bre ]]
+  then
+    ovs-vsctl add-br br-native
+  fi
   ovs-vsctl --may-exist add-port br-native patch-br-int -- set interface patch-br-int type=patch -- set interface patch-br-int option:peer=patch-br-native
   ovs-vsctl --may-exist add-port br-int patch-br-native -- set interface patch-br-native type=patch -- set interface patch-br-native option:peer=patch-br-int
 }
