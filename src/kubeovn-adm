@@ -454,7 +454,7 @@ function create-fip()
 function delete-fip()
 {
   ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
-  fname=$(ip a | grep $ip | awk '{print$7}')
+  fname=$(ip a | grep $ip | awk '{print$8}')
 
   if [[ -z $1 || -z $ip || $2 == "--help" ]]
   then
@@ -469,7 +469,7 @@ function delete-fip()
     exit 1
   fi
 
-  ifdown $fname
+  ifconfig $fname down
   rm -rf /etc/sysconfig/network-scripts/ifcfg-$fname
 }
 
