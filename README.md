@@ -11,6 +11,7 @@ SDN for Kubernetes network
 - VPC
 - static IP
 - floating IP
+- vtep
 
 # 2. References
 
