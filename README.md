@@ -12,6 +12,7 @@ SDN for Kubernetes network
 - static IP
 - floating IP
 - vtep
+- mutiple-bridge
 
 # 2. References
 
