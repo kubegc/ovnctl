@@ -324,9 +324,9 @@ function start-central()
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
   sudo ovs-vsctl set open . external-ids:ovn-remote=unix:/usr/var/run/openvswitch/ovnsb_db.sock
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
-  sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
+  #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
+  sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
 
-  #create-br-c-br
 }
 
 function stop-central()
@@ -364,7 +364,8 @@ function start-worker()
 
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
   sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
-  sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
+  #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
+  sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$thisip
   
   create-br-c-br
@@ -388,8 +389,10 @@ function help()
   echo -e "  start-worker :\tStart worker node"
   echo -e "  stop-worker  :\tStop worker node"
   echo -e "  create-switch:\tCreate a switch with a dhcp"
+  echo -e "  create-vpc   :\tCreate a switch with a dhcp, see create-switch"
   echo -e "  remove-switch:\tRemove a switch and the related dhcp"
   echo -e "  delete-switch:\tRemove a switch and the related dhcp, see remove-switch"
+  echo -e "  delete-vpc   :\tRemove a switch and the related dhcp, see delete-vpc"
   echo -e "  bind-swport  :\tBind a switch port"
   echo -e "  unbind-swport:\tUnbind a switch port"
   echo -e "  setport-vlan :\tSet port with vlan ID"
@@ -593,10 +596,16 @@ case $1 in
   "create-switch")
     create-switch $*
     ;;
+  "create-vpc")
+    create-switch $*
+    ;;
   "remove-switch")
     remove-switch $*
     ;;
   "delete-switch")
+    remove-switch $*
+    ;;
+  "delete-vpc")
     remove-switch $*
     ;;
   "bind-swport")
