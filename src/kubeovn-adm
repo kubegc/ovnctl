@@ -168,7 +168,7 @@ function create-bridge()
   nic=$(echo $* | awk -F"--nic" '{print$2}' | awk '{print$1}')
   vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
 
-if [[ -z $1 || -z $name || -z $nic || $2 == "--help" ]]
+  if [[ -z $1 || -z $name || -z $nic || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name  \tbridge name" >&2
@@ -200,8 +200,6 @@ if [[ -z $1 || -z $name || -z $nic || $2 == "--help" ]]
      echo OVS_BRIDGE=BRX       >> /etc/sysconfig/network-scripts/ifcfg-ORG
   fi
   ################################
-
-
   ################################
   res=$(systemctl status openvswitch | grep Active | awk -F":" '{print $2}' | awk '{print$1}')
   if [[ $res != "active" ]]
@@ -217,8 +215,8 @@ if [[ -z $1 || -z $name || -z $nic || $2 == "--help" ]]
   fi  
 
   ################################
-  
   ################################
+  
   if [[ ! -f $IFCFG"ifcfg-$nic.bak" ]]
   then
     cp $IFCFG"ifcfg-$nic" $IFCFG"ifcfg-$nic.bak"
@@ -233,6 +231,7 @@ if [[ -z $1 || -z $name || -z $nic || $2 == "--help" ]]
   ovs-vsctl --if-exist del-br $name
   ovs-vsctl add-br $name
   ovs-vsctl add-br $name"-"$vlan $name $vlan
+  ovs-vsctl set interface $name"-"$vlan type=internal
 
   static=$(cat $IFCFG"ifcfg-$nic.bak" | grep BOOTPROTO | grep static)
   ip=$(cat $IFCFG"ifcfg-$nic.bak" | grep BOOTPROTO | grep IPADDR)
@@ -259,9 +258,9 @@ if [[ -z $1 || -z $name || -z $nic || $2 == "--help" ]]
 function delete-bridge()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
- nic=$(echo $* | awk -F"--nic" '{print$2}' | awk '{print$1}')
+  nic=$(echo $* | awk -F"--nic" '{print$2}' | awk '{print$1}')
 
-if [[ -z $1 || -z $nic || -z $nic || $2 == "--help" ]]
+  if [[ -z $1 || -z $nic || -z $nic || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name  \tbridge name" >&2
@@ -287,7 +286,13 @@ if [[ -z $1 || -z $nic || -z $nic || $2 == "--help" ]]
 
   rm -rf $IFCFG"ifcfg-$nic"
   rm -rf $IFCFG"ifcfg-$name"
-  
+
+  if [[ ! -f $IFCFG"ifcfg-$nic.bak" ]]
+  then
+    echo "$nic is not a part of openvswitch" >&2
+    exit 1
+  fi 
+ 
   mv -f $IFCFG"ifcfg-$nic.bak" $IFCFG"ifcfg-$nic"
 
   ovs-vsctl --if-exist del-br $name && systemctl restart network
@@ -385,7 +390,7 @@ function setbridge-vlan()
 
 
   ovs-vsctl add-br $name"-"$vlan $name $vlan
-    
+  ovs-vsctl set interface $name"-"$vlan type=internal  
 }
 
 # Delete port's vlan id
@@ -419,11 +424,11 @@ function delbridge-vlan()
 
 function setport-vlan()
 {
-	name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
   mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
   vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
 
-if [[ -z $1 || -z $name || -z $mac || -z $vlan || $2 == "--help" ]]
+  if [[ -z $1 || -z $name || -z $mac || -z $vlan || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name    \tvm name" >&2
@@ -432,7 +437,7 @@ if [[ -z $1 || -z $name || -z $mac || -z $vlan || $2 == "--help" ]]
     exit 1
   fi
 
-port_name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
+  port_name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
   
   if [[ -z $port_name ]]
   then
@@ -447,10 +452,10 @@ port_name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"
 
 function delport-vlan()
 {
-	name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
   mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
 
-if [[ -z $1 || -z $name || -z $mac || $2 == "--help" ]]
+  if [[ -z $1 || -z $name || -z $mac || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name    \tvm name" >&2
@@ -458,7 +463,7 @@ if [[ -z $1 || -z $name || -z $mac || $2 == "--help" ]]
     exit 1
   fi
 
-port_name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
+  port_name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
 
   if [[ -z $port_name ]]
   then
