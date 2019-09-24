@@ -425,13 +425,15 @@ function delbridge-vlan()
 function bindport-vlan()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  bridge=$(echo $* | awk -F"--bridge" '{print$2}' | awk '{print$1}')
   mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
   vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
 
-  if [[ -z $1 || -z $name || -z $mac || -z $vlan || $2 == "--help" ]]
+  if [[ -z $1 || -z $name || -z $mac || -z $bridge || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name    \tvm name" >&2
+    echo -e "--bridge  \tbridge" >&2
     echo -e "--mac     \tvirtual NIC mac" >&2
     echo -e "--vlan    \tvlan (optional)" >&2
     exit 1
@@ -442,15 +444,21 @@ function bindport-vlan()
     vlan="0"
   fi
 
+  res=$(virsh dumpxml $name | grep "$mac")
+  if [[ -z $res ]]
+  then
+    echo "the mac is not a part of VM." >&2
+    exit 1
+  fi
+
   port_name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
-  
   if [[ -z $port_name ]]
   then
     echo "virtual NIC not exist." >&2
     exit 1
   fi
 
-  ovs-vsctl add-port $name$vlan $port_name
+  ovs-vsctl add-port $bridge"-"$vlan $port_name
 }
 
 # Delete port's vlan id
@@ -458,13 +466,15 @@ function bindport-vlan()
 function unbindport-vlan()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  bridge=$(echo $* | awk -F"--bridge" '{print$2}' | awk '{print$1}')
   vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
   mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
 
-  if [[ -z $1 || -z $name ||  -z $mac || $2 == "--help" ]]
+  if [[ -z $1 || -z $name ||  -z $mac  || -z $bridge || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name     \tvm name" >&2
+    echo -e "--bridge   \tbridge" >&2
     echo -e "--mac      \tvirtual NIC mac" >&2
     echo -e "--vlan     \tvlan(optional)" >&2
     exit 1
@@ -475,6 +485,13 @@ function unbindport-vlan()
     vlan="0"
   fi
 
+  res=$(virsh dumpxml $name | grep "$mac")
+  if [[ -z $res ]]
+  then
+    echo "the mac is not a part of VM." >&2
+    exit 1
+  fi
+
   port_name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
 
   if [[ -z $port_name ]]
@@ -483,7 +500,7 @@ function unbindport-vlan()
     exit 1
   fi
 
-  ovs-vsctl --if-exists del-port $name$vlan $port_name
+  ovs-vsctl --if-exists del-port $bridge$vlan $port_name
 }
 
 
