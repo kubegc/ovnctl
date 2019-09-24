@@ -9,10 +9,9 @@ SDN for Kubernetes network
 # 1. Features
 
 - VPC
+- vlan
 - static IP
 - floating IP
-- vtep
-- mutiple-bridge
 
 # 2. Roadmap
 
