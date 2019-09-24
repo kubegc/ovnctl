@@ -9,12 +9,18 @@ SDN for Kubernetes network
 # 1. Features
 
 - VPC
+- vlan
 - static IP
 - floating IP
-- vtep
-- mutiple-bridge
 
-# 2. References
+# 2. Roadmap
+
+- ~all support vlan [1.1.0]~
+- all support floating ip [1.2.0]
+- all support acl [1.3.0]
+- all support router [1.4.0]
+
+# 3. References
 
 - http://blog.spinhirne.com/2016/10/ovn-and-acls.html
 - https://zhaozhanxu.com/2017/02/22/SDN/OVN/2017-02-22-ovn-nbdb/
