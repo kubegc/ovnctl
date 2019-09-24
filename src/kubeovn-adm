@@ -65,6 +65,102 @@ SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
 ##
 ##########################################################
 
+function start-central()
+{
+  systemctl start  openvswitch
+  systemctl enable openvswitch
+  systemctl start  ovn-ovsdb
+  systemctl enable ovn-ovsdb
+  systemctl start  ovn-northd
+  systemctl enable ovn-northd
+  systemctl start  ovn-controller
+  systemctl enable ovn-controller
+
+  sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
+  sudo ovs-vsctl set open . external-ids:ovn-remote=unix:/usr/var/run/openvswitch/ovnsb_db.sock
+  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
+  sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
+
+  master=$(cat /root/.kube/config  | grep server | awk -F":" '{print$3}' | awk -F"//" '{print$2}')
+  thisip=$(ip a | grep "br-native" | grep inet | awk '{print$2}' |awk -F"/" 'NR==1{print$1}')
+
+  if [[ -z $master ]]
+  then
+    echo "undeployed Kubernetes or missing /root/.kube/config" >&2
+    exit 1
+  fi
+
+  if [[ -z $thisip ]]
+  then
+    echo "the NIC does not exist, please initial br-native " >&2
+    exit 1
+  fi
+
+  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
+  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$thisip
+}
+
+function stop-central()
+{
+  systemctl stop    openvswitch
+  systemctl disable openvswitch
+  systemctl stop    ovn-ovsdb
+  systemctl disable ovn-ovsdb
+  systemctl stop    ovn-northd
+  systemctl disable ovn-northd
+  systemctl stop    ovn-controller
+  systemctl disable ovn-controller
+}
+
+function start-worker()
+{
+  systemctl start  openvswitch
+  systemctl enable openvswitch
+  systemctl start  ovn-controller
+  systemctl enable ovn-controller
+
+  master=$(cat /root/.kube/config  | grep server | awk -F":" '{print$3}' | awk -F"//" '{print$2}')
+  thisip=$(ip a | grep "br-native" | grep inet | awk '{print$2}' |awk -F"/" 'NR==1{print$1}')
+
+  if [[ -z $master ]]
+  then
+    echo "undeployed Kubernetes or missing /root/.kube/config" >&2
+    exit 1
+  fi
+
+  if [[ -z $thisip ]]
+  then
+    echo "the NIC does not exist, please initial br-native " >&2
+    exit 1
+  fi
+
+  sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
+  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
+  sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
+  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$thisip
+  
+  create-br-c-br br-native br-int
+}
+
+function stop-worker()
+{
+  systemctl stop    ovn-controller
+  systemctl disable ovn-controller
+}
+
+function create-br-c-br()
+{
+  ovs-vsctl --may-exist add-port $1 patch-$2 -- set interface patch-$2 type=patch -- set interface patch-$2 option:peer=patch-$1
+  ovs-vsctl --may-exist add-port $2 patch-$1 -- set interface patch-$1 type=patch -- set interface patch-$1 option:peer=patch-$2
+}
+
+
+###########################################################
+##
+##  
+##
+##########################################################
+
 
 function create-bridge()
 {
@@ -196,95 +292,6 @@ function delete-bridge()
 
   ovs-vsctl --if-exist del-br  $bridge; systemctl restart network
 
-}
-
-function start-central()
-{
-  systemctl start  openvswitch
-  systemctl enable openvswitch
-  systemctl start  ovn-ovsdb
-  systemctl enable ovn-ovsdb
-  systemctl start  ovn-northd
-  systemctl enable ovn-northd
-  systemctl start  ovn-controller
-  systemctl enable ovn-controller
-
-  sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
-  sudo ovs-vsctl set open . external-ids:ovn-remote=unix:/usr/var/run/openvswitch/ovnsb_db.sock
-  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
-  sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
-
-  master=$(cat /root/.kube/config  | grep server | awk -F":" '{print$3}' | awk -F"//" '{print$2}')
-  thisip=$(ip a | grep "br-native" | grep inet | awk '{print$2}' |awk -F"/" 'NR==1{print$1}')
-
-  if [[ -z $master ]]
-  then
-    echo "undeployed Kubernetes or missing /root/.kube/config" >&2
-    exit 1
-  fi
-
-  if [[ -z $thisip ]]
-  then
-    echo "the NIC does not exist, please initial br-native " >&2
-    exit 1
-  fi
-
-  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
-  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$thisip
-}
-
-function stop-central()
-{
-  systemctl stop    openvswitch
-  systemctl disable openvswitch
-  systemctl stop    ovn-ovsdb
-  systemctl disable ovn-ovsdb
-  systemctl stop    ovn-northd
-  systemctl disable ovn-northd
-  systemctl stop    ovn-controller
-  systemctl disable ovn-controller
-}
-
-function start-worker()
-{
-  systemctl start  openvswitch
-  systemctl enable openvswitch
-  systemctl start  ovn-controller
-  systemctl enable ovn-controller
-
-  master=$(cat /root/.kube/config  | grep server | awk -F":" '{print$3}' | awk -F"//" '{print$2}')
-  thisip=$(ip a | grep "br-native" | grep inet | awk '{print$2}' |awk -F"/" 'NR==1{print$1}')
-
-  if [[ -z $master ]]
-  then
-    echo "undeployed Kubernetes or missing /root/.kube/config" >&2
-    exit 1
-  fi
-
-  if [[ -z $thisip ]]
-  then
-    echo "the NIC does not exist, please initial br-native " >&2
-    exit 1
-  fi
-
-  sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
-  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
-  sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
-  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$thisip
-  
-  create-br-c-br br-native br-int
-}
-
-function stop-worker()
-{
-  systemctl stop    ovn-controller
-  systemctl disable ovn-controller
-}
-
-function create-br-c-br()
-{
-  ovs-vsctl --may-exist add-port $1 patch-$2 -- set interface patch-$2 type=patch -- set interface patch-$2 option:peer=patch-$1
-  ovs-vsctl --may-exist add-port $2 patch-$1 -- set interface patch-$1 type=patch -- set interface patch-$1 option:peer=patch-$2
 }
 
 ###########################################################
