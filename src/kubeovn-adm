@@ -165,19 +165,21 @@ function create-br-c-br()
 function create-bridge()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
-  bridge=$(echo $* | awk -F"--bridge" '{print$2}' | awk '{print$1}')
+ nic=$(echo $* | awk -F"--nic" '{print$2}' | awk '{print$1}')
+ vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
 
-  if [[ -z $1 || -z $name || $2 == "--help" ]]
+if [[ -z $1 || -z $name || -z $nic || $2 == "--help" ]]
   then
     cmddesc
-    echo -e "--name  \tNIC name" >&2
-    echo -e "--bridge\tbrdige name(optinal), default is br-name" >&2
+    echo -e "--name  \tbridge name" >&2
+    echo -e "--nic   \tnic name" >&2
+    echo -e "--vlan  \tvlan id, default is \"vlan=0\"" >&2
     exit 1
   fi
 
-  if [[ -z $bridge ]]
+  if [[ -z $vlan ]]
   then
-    bridge="br-"$name
+    vlan=0
   fi
 
   ################################
@@ -208,7 +210,7 @@ function create-bridge()
     exit 1
   fi
 
-  if [[ ! -f $IFCFG"ifcfg-$name" ]]
+  if [[ ! -f $IFCFG"ifcfg-$nic" ]]
   then
     echo "wrong NIC name" >&2
     exit 1
@@ -217,58 +219,54 @@ function create-bridge()
   ################################
   
   ################################
-  if [[ ! -f $IFCFG"ifcfg-$name.bak" ]]
+  if [[ ! -f $IFCFG"ifcfg-$nic.bak" ]]
   then
-    cp $IFCFG"ifcfg-$name" $IFCFG"ifcfg-$name.bak"
+    cp $IFCFG"ifcfg-$nic" $IFCFG"ifcfg-$nic.bak"
   fi
 
+  rm -rf $IFCFG"ifcfg-$nic"
   rm -rf $IFCFG"ifcfg-$name"
-  rm -rf $IFCFG"ifcfg-$bridge"
 
-  cp $IFCFG"ifcfg-ORG" $IFCFG"ifcfg-$name"
-  cp $IFCFG"ifcfg-BRX" $IFCFG"ifcfg-$bridge"
+mv $IFCFG"ifcfg-ORG" $IFCFG"ifcfg-$nic"
+mv $IFCFG"ifcfg-BRX" $IFCFG"ifcfg-$name"
 
-  ovs-vsctl --if-exist del-br $bridge
-  ovs-vsctl add-br $bridge
+  ovs-vsctl --if-exist del-br $name
+ ovs-vsctl add-br $name
+ovs-vsctl add-br $name"-vlan-"$vlan $name $vlan
 
-  static=$(cat ifcfg-$name.bak | grep BOOTPROTO | grep static)
-  ip=$(cat ifcfg-$name.bak | grep BOOTPROTO | grep IPADDR)
-  mask=$(cat ifcfg-$name.bak | grep BOOTPROTO | grep NETMASK)
-  prefix=$(cat ifcfg-$name.bak | grep BOOTPROTO | grep PREFIX)
-  gw=$(cat ifcfg-$name.bak | grep BOOTPROTO | grep GATEWAY)
+  static=$(cat ifcfg-$nic.bak | grep BOOTPROTO | grep static)
+  ip=$(cat ifcfg-$nic.bak | grep BOOTPROTO | grep IPADDR)
+  mask=$(cat ifcfg-$nic.bak | grep BOOTPROTO | grep NETMASK)
+  prefix=$(cat ifcfg-$nic.bak | grep BOOTPROTO | grep PREFIX)
+  gw=$(cat ifcfg-$nic.bak | grep BOOTPROTO | grep GATEWAY)
   
-  sed -i "s/BRX/$bridge/g" $IFCFG"ifcfg-$bridge"
-  sed -i "s/BRX/$bridge/g" $IFCFG"ifcfg-$name"
-  sed -i "s/ORG/$name/g" $IFCFG"ifcfg-$name"
+  sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$name"
+  sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$nic"
+  sed -i "s/ORG/$nic/g" $IFCFG"ifcfg-$nic"
   if [[ -z $static ]]
   then
-    echo "BOOTPROTO=dhcp" >> $IFCFG"ifcfg-$bridge"
+    echo "BOOTPROTO=dhcp" >> $IFCFG"ifcfg-$name"
   else
-    echo $ip >> $IFCFG"ifcfg-$bridge"
-    echo $mask >> $IFCFG"ifcfg-$bridge"
-    echo $prefix >> $IFCFG"ifcfg-$bridge"
-    echo $gw >> $IFCFG"ifcfg-$bridge"
+    echo $ip >> $IFCFG"ifcfg-$name"
+    echo $mask >> $IFCFG"ifcfg-$name"
+    echo $prefix >> $IFCFG"ifcfg-$name"
+    echo $gw >> $IFCFG"ifcfg-$name"
   fi
 
-  ovs-vsctl add-port $bridge $name; systemctl restart network
+  ovs-vsctl add-port $name $nic; systemctl restart network
 }
 
 function delete-bridge()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
-  bridge=$(echo $* | awk -F"--bridge" '{print$2}' | awk '{print$1}')
+ nic=$(echo $* | awk -F"--nic" '{print$2}' | awk '{print$1}')
 
-  if [[ -z $1 || -z $name || $2 == "--help" ]]
+if [[ -z $1 || -z $nic || -z $nic || $2 == "--help" ]]
   then
     cmddesc
-    echo -e "--name  \tNIC name" >&2
-    echo -e "--bridge\tbrdige name(optinal), default is br-name" >&2
+    echo -e "--name  \tbridge name" >&2
+    echo -e "--nic   \tnic name" >&2
     exit 1
-  fi
-
-  if [[ -z $bridge ]]
-  then
-    bridge="br-"$name
   fi
 
   ################################
@@ -279,7 +277,7 @@ function delete-bridge()
     exit 1
   fi
 
-  if [[ ! -f $IFCFG"ifcfg-$name" ]]
+  if [[ ! -f $IFCFG"ifcfg-$nic" ]]
   then
     echo "wrong NIC name" >&2
     exit 1
@@ -287,12 +285,12 @@ function delete-bridge()
 
   ################################
 
+  rm -rf $IFCFG"ifcfg-$nic"
   rm -rf $IFCFG"ifcfg-$name"
-  rm -rf $IFCFG"ifcfg-$bridge"
   
-  mv -f $IFCFG"ifcfg-$name.bak" $IFCFG"ifcfg-$name"
+  mv -f $IFCFG"ifcfg-$nic.bak" $IFCFG"ifcfg-$nic"
 
-  ovs-vsctl --if-exist del-br  $bridge; systemctl restart network
+  ovs-vsctl --if-exist del-br $name; systemctl restart network
 
 }
 
@@ -372,26 +370,16 @@ function delete-fip()
 
 # Set vlan id for port
 
-function setport-vlan()
+function setbridge-vlan()
 {
-	switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
-  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
+	name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
   vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
 
-if [[ -z $1 || -z $switch || -z $mac || -z $vlan || $2 == "--help" ]]
+if [[ -z $1 || -z $name || -z $vlan || $2 == "--help" ]]
   then
     cmddesc
-    echo -e "--switch    \tswitch name" >&2
-    echo -e "--mac      \tvirtual NIC mac" >&2
+    echo -e "--name    \tbridge name" >&2
     echo -e "--vlan      \tvlan id" >&2
-    exit 1
-  fi
-
-  name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
-  
-  if [[ -z $name ]]
-  then
-    echo "NIC not exist." >&2
     exit 1
   fi
 
@@ -400,24 +388,14 @@ if [[ -z $1 || -z $switch || -z $mac || -z $vlan || $2 == "--help" ]]
 
 # Delete port's vlan id
 
-function delport-vlan()
+function delbridge-vlan()
 {
-	switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
-  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
+	name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
 
-  if [[ -z $1 || -z $switch || -z $mac || $2 == "--help" ]]
+if [[ -z $1 || -z $name || $2 == "--help" ]]
   then
     cmddesc
-    echo -e "--switch    \tswitch name" >&2
-    echo -e "--mac      \tvirtual NIC mac" >&2
-    exit 1
-  fi
-
-  name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
-
-  if [[ -z $name ]]
-  then
-    echo "NIC not exist." >&2
+    echo -e "--name    \tbridge name" >&2
     exit 1
   fi
 
@@ -429,6 +407,67 @@ function delport-vlan()
   fi
   
   ovs-vsctl remove port $name tag $vlan
+}
+
+# Set vlan id for port
+
+function setport-vlan()
+{
+	name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
+  vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
+
+if [[ -z $1 || -z $name || -z $mac || -z $vlan || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name    \tvm name" >&2
+    echo -e "--mac      \tvirtual NIC mac" >&2
+    echo -e "--vlan      \tvlan id" >&2
+    exit 1
+  fi
+
+port_name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
+  
+  if [[ -z $port_name ]]
+  then
+    echo "NIC not exist." >&2
+    exit 1
+  fi
+
+  ovs-vsctl set port $port_name tag=$vlan
+}
+
+# Delete port's vlan id
+
+function delport-vlan()
+{
+	name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
+
+if [[ -z $1 || -z $name || -z $mac || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name    \tvm name" >&2
+    echo -e "--mac      \tvirtual NIC mac" >&2
+    exit 1
+  fi
+
+port_name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
+
+  if [[ -z $port_name ]]
+  then
+    echo "NIC not exist." >&2
+    exit 1
+  fi
+
+  vlan=$(ovs-vsctl get port $port_name tag)
+
+  if echo $vlan | grep -q '[^0-9]'
+  then
+    exit 0
+  fi
+  
+  ovs-vsctl remove port $port_name tag $vlan
 }
 
 
@@ -830,4 +869,3 @@ case $1 in
   help
   ;;
 esac
-
