@@ -368,6 +368,68 @@ function delete-fip()
   rm -rf /etc/sysconfig/network-scripts/ifcfg-$fname
 }
 
+# Set vlan id for port
+
+function setport-vlan()
+{
+	switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
+  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
+  vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
+
+if [[ -z $1 || -z $switch || -z $mac || -z $vlan || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--switch    \tswitch name" >&2
+    echo -e "--mac      \tvirtual NIC mac" >&2
+    echo -e "--vlan      \tvlan id" >&2
+    exit 1
+  fi
+
+  name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
+  
+  if [[ -z $name ]]
+  then
+    echo "NIC not exist." >&2
+    exit 1
+  fi
+
+  ovs-vsctl set port $name tag=$vlan
+}
+
+# Delete port's vlan id
+
+function delport-vlan()
+{
+	switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
+  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $switch || -z $mac || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--switch    \tswitch name" >&2
+    echo -e "--mac      \tvirtual NIC mac" >&2
+    exit 1
+  fi
+
+  name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
+
+  if [[ -z $name ]]
+  then
+    echo "NIC not exist." >&2
+    exit 1
+  fi
+
+  vlan=$(ovs-vsctl get port $name tag)
+
+  if echo $vlan | grep -q '[^0-9]'
+  then
+    exit 0
+  fi
+  
+  ovs-vsctl remove port $name tag $vlan
+}
+
+
 ###########################################################
 ##
 ##  l3 switch
@@ -517,68 +579,6 @@ function unbind-swport()
   fi
   $NB_CMD --if-exists lsp-del $iface
 }
-
-# Set vlan id for port
-
-function setport-vlan()
-{
-	switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
-  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
-  vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
-
-if [[ -z $1 || -z $switch || -z $mac || -z $vlan || $2 == "--help" ]]
-  then
-    cmddesc
-    echo -e "--switch    \tswitch name" >&2
-    echo -e "--mac      \tvirtual NIC mac" >&2
-    echo -e "--vlan      \tvlan id" >&2
-    exit 1
-  fi
-
-  name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
-  
-  if [[ -z $name ]]
-  then
-    echo "NIC not exist." >&2
-    exit 1
-  fi
-
-  ovs-vsctl set port $name tag=$vlan
-}
-
-# Delete port's vlan id
-
-function delport-vlan()
-{
-	switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
-  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
-
-  if [[ -z $1 || -z $switch || -z $mac || $2 == "--help" ]]
-  then
-    cmddesc
-    echo -e "--switch    \tswitch name" >&2
-    echo -e "--mac      \tvirtual NIC mac" >&2
-    exit 1
-  fi
-
-  name=$(ovs-vsctl list interface | grep -A 14 "$mac" | grep name | awk -F"\"" '{print$2}')
-
-  if [[ -z $name ]]
-  then
-    echo "NIC not exist." >&2
-    exit 1
-  fi
-
-  vlan=$(ovs-vsctl get port $name tag)
-
-  if echo $vlan | grep -q '[^0-9]'
-  then
-    exit 0
-  fi
-  
-  ovs-vsctl remove port $name tag $vlan
-}
-
 
 # Set vxlan id for port
 
