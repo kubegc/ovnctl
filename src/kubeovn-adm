@@ -234,10 +234,10 @@ function create-bridge()
   ovs-vsctl set interface $name"-"$vlan type=internal
 
   static=$(cat $IFCFG"ifcfg-$nic.bak" | grep BOOTPROTO | grep static)
-  ip=$(cat $IFCFG"ifcfg-$nic.bak" | grep BOOTPROTO | grep IPADDR)
-  mask=$(cat $IFCFG"ifcfg-$nic.bak" | grep BOOTPROTO | grep NETMASK)
-  prefix=$(cat $IFCFG"ifcfg-$nic.bak" | grep BOOTPROTO | grep PREFIX)
-  gw=$(cat $IFCFG"ifcfg-$nic.bak" | grep BOOTPROTO | grep GATEWAY)
+  ip=$(cat $IFCFG"ifcfg-$nic.bak" | grep IPADDR)
+  mask=$(cat $IFCFG"ifcfg-$nic.bak" | grep NETMASK)
+  prefix=$(cat $IFCFG"ifcfg-$nic.bak" |  grep PREFIX)
+  gw=$(cat $IFCFG"ifcfg-$nic.bak" | grep GATEWAY)
   
   sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$name"
   sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$nic"
