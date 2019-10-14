@@ -520,11 +520,11 @@ function create-switch()
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
   subn=$(echo $* | awk -F"--subnet" '{print$2}' | awk '{print$1}')
   
-  if [[ -z $1 || -z $name || -z $subn || $2 == "--help" ]]
+  if [[ -z $1 || -z $name || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name  \tswitch name" >&2
-    echo -e "--subnet\tIP range. for example, 192.168.1.0/24"  >&2
+    echo -e "--subnet\toptinal, IP range. for example, 192.168.1.0/24"  >&2
     exit 1
   fi
 
@@ -537,7 +537,7 @@ function create-switch()
  
   $NB_CMD ls-add $name
  
-  if [[ -n $subn]]
+  if [[ -n $subn ]]
   then
     router='r4'$name
     rport='rp4'$name
