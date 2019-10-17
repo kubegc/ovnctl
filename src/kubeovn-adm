@@ -75,29 +75,31 @@ function start-central()
   systemctl enable ovn-northd
   systemctl start  ovn-controller
   systemctl enable ovn-controller
+  systemctl start  ovn-controller-vtep
+  systemctl enable ovn-controller-vtep
 
-  sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
-  sudo ovs-vsctl set open . external-ids:ovn-remote=unix:/usr/var/run/openvswitch/ovnsb_db.sock
-  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
-  sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
+#  sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
+#  sudo ovs-vsctl set open . external-ids:ovn-remote=unix:/usr/var/run/openvswitch/ovnsb_db.sock
+#  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
+#  sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
 
-  master=$(cat /root/.kube/config  | grep server | awk -F":" '{print$3}' | awk -F"//" '{print$2}')
-  thisip=$master
+#  master=$(cat /root/.kube/config  | grep server | awk -F":" '{print$3}' | awk -F"//" '{print$2}')
+#  thisip=$master
 
-  if [[ -z $master ]]
-  then
-    echo "undeployed Kubernetes or missing /root/.kube/config" >&2
-    exit 1
-  fi
+#  if [[ -z $master ]]
+#  then
+#    echo "undeployed Kubernetes or missing /root/.kube/config" >&2
+#    exit 1
+#  fi
 
-  if [[ -z $thisip ]]
-  then
-    echo "the NIC does not exist, please initial br-native " >&2
-    exit 1
-  fi
+#  if [[ -z $thisip ]]
+#  then
+#    echo "the NIC does not exist, please initial br-native " >&2
+#    exit 1
+#  fi
 
-  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
-  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$thisip
+#  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
+#  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$thisip
 }
 
 function stop-central()
@@ -110,6 +112,8 @@ function stop-central()
   systemctl disable ovn-northd
   systemctl stop    ovn-controller
   systemctl disable ovn-controller
+  systemctl stop    ovn-controller-vtep
+  systemctl disable ovn-controller-vtep
 }
 
 function start-worker()
@@ -118,41 +122,45 @@ function start-worker()
   systemctl enable openvswitch
   systemctl start  ovn-controller
   systemctl enable ovn-controller
+  systemctl start  ovn-controller-vtep
+  systemctl enable ovn-controller-vtep
 
-  master=$(cat /root/.kube/config  | grep server | awk -F":" '{print$3}' | awk -F"//" '{print$2}')
-  thisip=$(ip a | grep "br-native" | grep inet | awk '{print$2}' |awk -F"/" 'NR==1{print$1}')
+#  master=$(cat /root/.kube/config  | grep server | awk -F":" '{print$3}' | awk -F"//" '{print$2}')
+#  thisip=$(ip a | grep "br-native" | grep inet | awk '{print$2}' |awk -F"/" 'NR==1{print$1}')
 
-  if [[ -z $master ]]
-  then
-    echo "undeployed Kubernetes or missing /root/.kube/config" >&2
-    exit 1
-  fi
+#  if [[ -z $master ]]
+#  then
+#    echo "undeployed Kubernetes or missing /root/.kube/config" >&2
+#    exit 1
+#  fi
 
-  if [[ -z $thisip ]]
-  then
-    echo "the NIC does not exist, please initial br-native " >&2
-    exit 1
-  fi
+#  if [[ -z $thisip ]]
+#  then
+#    echo "the NIC does not exist, please initial br-native " >&2
+#    exit 1
+#  fi
 
-  sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
-  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
-  sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
-  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$thisip
+#  sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
+#  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
+#  sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
+#  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$thisip
   
-  create-br-c-br br-native br-int
+#  create-br-c-br br-native br-int
 }
 
 function stop-worker()
 {
   systemctl stop    ovn-controller
   systemctl disable ovn-controller
+  systemctl stop    ovn-controller-vtep
+  systemctl disable ovn-controller-vtep
 }
 
-function create-br-c-br()
-{
-  ovs-vsctl --may-exist add-port $1 patch-$2 -- set interface patch-$2 type=patch -- set interface patch-$2 option:peer=patch-$1
-  ovs-vsctl --may-exist add-port $2 patch-$1 -- set interface patch-$1 type=patch -- set interface patch-$1 option:peer=patch-$2
-}
+#function create-br-c-br()
+#{
+#  ovs-vsctl --may-exist add-port $1 patch-$2 -- set interface patch-$2 type=patch -- set interface patch-$2 option:peer=patch-$1
+#  ovs-vsctl --may-exist add-port $2 patch-$1 -- set interface patch-$1 type=patch -- set interface patch-$1 option:peer=patch-$2
+#}
 
 
 ###########################################################
@@ -515,6 +523,60 @@ virsh detach-interface --domain $domain --type bridge --mac $mac --live --config
 ###########################################################
 
 
+## Create GRE
+
+function create-gre()
+{
+   create-l3bridge geneve
+}
+
+function create-vxlan()
+{
+   create-l3bridge vxlan
+}
+
+## Create l3bridge
+
+function create-l3bridge()
+{
+  master=$(cat /root/.kube/config  | grep server | awk -F":" '{print$3}' | awk -F"//" '{print$2}')
+  thisip=$master
+
+  if [[ -z $master ]]
+  then
+    echo "undeployed Kubernetes or missing /root/.kube/config" >&2
+    exit 1
+  fi
+
+  if [[ -z $thisip ]]
+  then
+    echo "the NIC does not exist, please initial br-native " >&2
+    exit 1
+  fi
+
+  sudo ovs-vsctl set Open_vSwitch  . external-ids:ovn-bridge=br-int external-ids:ovn-remote=tcp:$master:6642 external-ids:ovn-encap-type=$1  external-ids:ovn-encap-ip=$thisip
+}
+
+## Delete GRE
+
+function delete-gre()
+{
+  delete-l3bridge
+}
+
+function delete-vxlan()
+{
+  delete-l3bridge
+}
+
+## Delete l3bridge
+
+function delete-l3bridge()
+{
+  id=$($SB_CMD show | grep -B 1 "hostname: leader"  | grep Chassis | awk -F"\"" '{print$2}')
+  $SB_CMD chassis-del $id
+}
+
 ## Create a switch with a default DHCP
 
 function create-switch()
@@ -837,10 +899,14 @@ function help()
   echo -e "  unbindport-vlan:\t(L2  ): Unset a vlan id for a port"
   echo -e "  create-fip     :\t(L2  ): Create L2's floating IP"
   echo -e "  delete-fip     :\t(L2  ): Delete L2's floating IP"
+  echo -e "  create-gre     :\t(L3  ): Create GRE bridge"
+  echo -e "  delete-gre     :\t(L3  ): Delete GRE bridge"
+  echo -e "  create-vxlan   :\t(L3  ): Create Vxlan bridge"
+  echo -e "  delete-vxlan   :\t(L3  ): Delete Vxlan bridge"
   echo -e "  create-switch  :\t(L3  ): Create L3 switch and gateway"
-  echo -e "  create-vpc     :\t(L3  ): Create L3 switch and gateway, see create-switch"
   echo -e "  remove-switch  :\t(L3  ): Remove L3 switch and gateway"
   echo -e "  delete-switch  :\t(L3  ): Remove L3 switch and gateway, see remove-switch"
+  echo -e "  create-vpc     :\t(L3  ): Create L3 switch and gateway, see create-switch"
   echo -e "  delete-vpc     :\t(L3  ): Remove L3 switch and gateway, see remove-switch"
   echo -e "  bind-swport    :\t(L3  ): Bind a L3's port to OVN"
   echo -e "  unbind-swport  :\t(L3  ): Unbind a L3's port from OVN"
@@ -853,6 +919,18 @@ case $1 in
     ;;
   "delete-bridge")
     delete-bridge $*
+    ;;
+  "create-gre")
+    create-gre $*
+    ;;
+  "delete-gre")
+    delete-gre $*
+    ;;
+  "create-vxlan")
+    create-vxlan $*
+    ;;
+  "delete-vxlan")
+    delete-vxlan $*
     ;;
   "bindport-vlan")
     bindport-vlan $*
@@ -910,6 +988,12 @@ case $1 in
     ;;
   "unbind-fip")
     unbind-fip $*
+    ;;
+  "create-gre")
+    create-gre $*
+    ;;
+  "delete-gre")
+    delete-gre $*
     ;;
   "--help")
     help
