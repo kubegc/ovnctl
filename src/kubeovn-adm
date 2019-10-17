@@ -238,6 +238,7 @@ function create-bridge()
   mask=$(cat $IFCFG"ifcfg-$nic.bak" | grep NETMASK)
   prefix=$(cat $IFCFG"ifcfg-$nic.bak" |  grep PREFIX)
   gw=$(cat $IFCFG"ifcfg-$nic.bak" | grep GATEWAY)
+  dns=$(cat $IFCFG"ifcfg-$nic.bak" | grep DNS)
   
   sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$name"
   sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$nic"
@@ -250,6 +251,7 @@ function create-bridge()
     echo $mask >> $IFCFG"ifcfg-$name"
     echo $prefix >> $IFCFG"ifcfg-$name"
     echo $gw >> $IFCFG"ifcfg-$name"
+    echo $dns >> $IFCFG"ifcfg-$name"
   fi
 
 ovs-vsctl add-port $name $nic && ifdown $nic && ifup $nic && ifup $name
