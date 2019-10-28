@@ -583,10 +583,10 @@ function create-switch()
       rip=$gway
     fi
    
-    imtu="1500"
-    if [[ -n $mtu ]]
+    mtu="1500"
+    if [[ -n $imtu ]]
     then
-      imtu=$mtu
+      mtu=$imtu
     fi
  
     rmk=$(echo $subn | awk -F"/" '{print$2}')
@@ -600,7 +600,7 @@ function create-switch()
     $NB_CMD lsp-set-addresses $sport $rmac
     $NB_CMD lsp-set-options $sport router-port=$rport
 
-    did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\" \"mtu\"=\"$imtu\"")
+    did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\" \"mtu\"=\"$mtu\"")
 
     $NB_CMD lsp-add $name "dhcpv4id-$name-"$did
   fi
