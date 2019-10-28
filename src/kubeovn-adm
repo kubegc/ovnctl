@@ -63,21 +63,23 @@ SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
 
 function start-central()
 {
-  systemctl start  openvswitch
-  systemctl enable openvswitch
-  systemctl start  ovn-ovsdb
-  systemctl enable ovn-ovsdb
-  systemctl start  ovn-northd
-  systemctl enable ovn-northd
-  systemctl start  ovn-controller
-  systemctl enable ovn-controller
-  systemctl start  ovn-controller-vtep
-  systemctl enable ovn-controller-vtep
+  systemctl restart openvswitch
+  systemctl enable  openvswitch
+  systemctl start   ovn-ovsdb
+  systemctl enable  ovn-ovsdb
+  systemctl start   ovn-northd
+  systemctl enable  ovn-northd
+  systemctl start   ovn-controller
+  systemctl enable  ovn-controller
+  systemctl start   ovn-controller-vtep
+  systemctl enable  ovn-controller-vtep
 
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
   sudo ovs-vsctl set open . external-ids:ovn-remote=unix:/usr/var/run/openvswitch/ovnsb_db.sock
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
   sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
+
+  #bash /usr/bin/vtep-init-ctl.sh start-vtep >/dev/null  2>&1  &
 }
 
 function stop-central()
@@ -90,21 +92,25 @@ function stop-central()
   systemctl disable ovn-controller
   systemctl stop    ovn-controller-vtep
   systemctl disable ovn-controller-vtep
+  
+  #bash /usr/bin/vtep-init-ctl.sh stop-vtep >/dev/null  2>&1 
 }
 
 function start-worker()
 {
-  systemctl start  openvswitch
-  systemctl enable openvswitch
-  systemctl start  ovn-controller
-  systemctl enable ovn-controller
-  systemctl start  ovn-controller-vtep
-  systemctl enable ovn-controller-vtep
+  systemctl restart openvswitch
+  systemctl enable  openvswitch
+  systemctl start   ovn-controller
+  systemctl enable  ovn-controller
+  systemctl start   ovn-controller-vtep
+  systemctl enable  ovn-controller-vtep
 
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
   sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
   sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$MASTER:6642
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$(thisIP) 
+
+  #bash /usr/bin/vtep-init-ctl.sh start-vtep >/dev/null  2>&1  &
 }
 
 function stop-worker()
@@ -113,6 +119,8 @@ function stop-worker()
   systemctl disable ovn-controller
   systemctl stop    ovn-controller-vtep
   systemctl disable ovn-controller-vtep
+
+  #bash /usr/bin/vtep-init-ctl.sh stop-vtep >/dev/null  2>&1 
 }
 
 #function create-br-c-br()
@@ -671,7 +679,7 @@ function remove-switch()
   router='r4'$name
   dhcpid=$($NB_CMD show $name | grep "dhcpv4id-$name-" | awk -F"dhcpv4id-$name-" '{print$2}')
   $NB_CMD ls-del $name  >/dev/null  2>&1 
-  $NB_CMD lr-del $router >/dev/null  2>&1 
+  $NB_CMD lr-del $router >/dev/null  2>&1
   $NB_CMD dhcp-options-del $dhcpid >/dev/null  2>&1  
 }
 
