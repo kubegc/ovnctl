@@ -38,6 +38,7 @@ SDN for Kubernetes network
 - https://www.li-rui.top/2018/12/16/network/ovn%E5%AD%90%E7%BD%91%E4%BB%A5%E5%8F%8A%E4%B8%89%E5%B1%82%E7%BD%91%E5%85%B3/
 - https://upcloud.com/community/tutorials/how-to-configure-floating-ip-on-centos/
 - https://blog.csdn.net/mergerly/article/details/54866230
+- https://hechao.li/2018/05/15/VXLAN-Hands-on-Lab/
 
 # 5. Some commands
 
