@@ -20,7 +20,7 @@ function start-vtep()
     ovsdb-tool create /etc/openvswitch/vtep.db /usr/share/openvswitch/vtep.ovsschema
   fi
 
-  ovsdb-server --remote punix:/var/run/openvswitch/db.sock --remote=db:hardware_vtep,Global,managers  /etc/openvswitch/vtep.db
+  ovsdb-server --remote punix:/run/openvswitch/db.sock --remote=db:hardware_vtep,Global,managers /etc/openvswitch/vtep.db
 }
 
 function stop-vtep()
