@@ -236,7 +236,9 @@ function create-bridge()
     echo $dns >> $IFCFG"ifcfg-$name"
   fi
 
-ovs-vsctl add-port $name $nic && ifdown $nic && ifup $nic && ifup $name
+  ovs-vsctl add-port $name $nic && ifdown $nic && ifup $nic && ifup $name
+  ip link set dev $nic promisc on
+  ip link set dev $name promisc on
 }
 
 function delete-bridge()
@@ -627,6 +629,7 @@ function create-switch()
 
     $NB_CMD lsp-add $name "dhcpv4id-$name-"$did
   fi
+
 }
 
 ## Remove a switch and the related DHCP
