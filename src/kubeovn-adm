@@ -106,7 +106,8 @@ function start-worker()
   systemctl enable  ovn-controller-vtep
 
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
-  sudo ovs-vsctl set open . external-ids:ovn-encap-type=vxlan
+  #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
+  sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
   sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$MASTER:6642
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$(thisIP) 
 
@@ -121,6 +122,12 @@ function stop-worker()
   systemctl disable ovn-controller-vtep
 
   #bash /usr/bin/vtep-init-ctl.sh stop-vtep >/dev/null  2>&1 
+}
+
+function clear()
+{
+  rm -rf /etc/openvswitch/*db*
+  rm -rf /etc/openvswitch/system-id.conf
 }
 
 #function create-br-c-br()
