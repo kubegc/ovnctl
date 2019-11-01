@@ -77,9 +77,9 @@ function start-central()
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
   sudo ovs-vsctl set open . external-ids:ovn-remote=unix:/usr/var/run/openvswitch/ovnsb_db.sock
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
-  sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
+  #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
+  sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
 
-  #bash /usr/bin/vtep-init-ctl.sh start-vtep >/dev/null  2>&1  &
 }
 
 function stop-central()
