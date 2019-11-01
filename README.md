@@ -16,7 +16,7 @@ SDN for Kubernetes network
 # 2. Roadmap
 
 - ~all support vlan [1.1.0]~
-- all support floating ip [1.2.0]
+- ~~all support floating ip [1.2.0]~~
 - all support acl [1.3.0]
 - all support router [1.4.0]
 
