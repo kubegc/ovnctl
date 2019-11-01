@@ -940,8 +940,8 @@ function help()
   echo -e "  stop-central   :\t(Init): Stop  central node"
   echo -e "  start-worker   :\t(Init): Start worker  node"
   echo -e "  stop-worker    :\t(Init): Stop  worker  node"
-#  echo -e "  create-bridge  :\t(L2  ): Create L2 bridge"
-#  echo -e "  delete-bridge  :\t(L2  ): Delete L2 bridge"
+  echo -e "  create-bridge  :\t(L2  ): Create L2 bridge"
+  echo -e "  delete-bridge  :\t(L2  ): Delete L2 bridge"
 #  echo -e "  setbridge-vlan :\t(L2  ): Set a vlan for a L2 bridge"
 #  echo -e "  delbridge-vlan :\t(L2  ): Unset a vlan id of a L2 bridge"
 #  echo -e "  bindport-vlan  :\t(L2  ): Set a vlan id for a  port"
@@ -964,12 +964,12 @@ function help()
 
 
 case $1 in
-#  "create-bridge")
-#    create-bridge $*
-#    ;;
-#  "delete-bridge")
-#    delete-bridge $*
-#    ;;
+  "create-bridge")
+    create-bridge $*
+    ;;
+  "delete-bridge")
+    delete-bridge $*
+    ;;
 #  "create-gre")
 #    create-gre $*
 #    ;;
