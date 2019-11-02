@@ -1,14 +1,24 @@
+MASTER=$(cat /root/.kube/config  | grep server |awk -F"server:" '{print$2}' | awk -F"https://" '{print$2}' | awk -F":" '{print$1}')
+
+NB_PORT="6641"
+
+NB_CMD="ovn-nbctl --db=tcp:$MASTER:$NB_PORT"
+
 function create-vm()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
   nic=$(echo $* | awk -F"--nic" '{print$2}' | awk '{print$1}')
   mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
+  ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
 
-  if [[ -z $1 || -z $name || -z $nic || -z $mac || $2 == "--help" ]]
+  if [[ -z $1 || -z $name || -z $nic || -z $mac || -z $ip || $2 == "--help" ]]
   then
     echo -e "--name       \tVM name" >&2
+    echo -e "--switch     \tSee kubeovn create-switch" >&2
     echo -e "--nic        \tNIC"  >&2
     echo -e "--mac        \tMac"  >&2
+    echo -e "--ip         \tIP"  >&2
     exit 1
   fi
 
@@ -19,6 +29,13 @@ function create-vm()
   sudo ip netns exec $name ip link set $name-$nic addres $mac
   sudo ip netns exec $name ip link set $name-$nic up
   sudo ovs-vsctl add-port br-int veth-$name
+
+  sudo $NB_CMD lsp-add $switch $switch-$name
+  sudo $NB_CMD lsp-set-addresses $switch-$name "$mac $ip"
+  
+  sudo ovs-vsctl set Interface  veth-$name external_ids:iface-id=$switch-$name
+  sudo ip netns exec $name ip addr add $ip/24 dev $name-$nic
+
 }
 
 function help()
