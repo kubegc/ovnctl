@@ -843,7 +843,7 @@ function delport-vxlan()
 
 function bind-fip()
 {
-  switch=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
   vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
  
@@ -891,7 +891,7 @@ function bind-fip()
 
 function unbind-fip()
 {
-  switch=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
   vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
 
