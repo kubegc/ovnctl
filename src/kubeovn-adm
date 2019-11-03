@@ -348,7 +348,7 @@ function create-fip()
 function delete-fip()
 {
   ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
-  fname=$(ip a | grep $ip | awk '{print$8}')
+  fname=$(ip a | grep $ip | awk '{print$NF}')
 
   if [[ -z $1 || -z $ip || $2 == "--help" ]]
   then
