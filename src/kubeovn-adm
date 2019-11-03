@@ -856,48 +856,37 @@ function bind-fip()
     exit 1
   fi
 
-  node=$(hostname)
-  name=$(ovs-vsctl list interface | grep -A 14 "$vmmac" | grep name | awk -F"\"" '{print$2}')
-  ne=$(ovs-vsctl show | grep "\"$name\"" | grep Port)
-  if [[ -z $ne ]]
-  then
-    echo "mac does not exist" >&2
-    exit 1
-  fi
+  vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
 
-  nuuid=$($SB_CMD show | grep -B 1 "$node" | grep Chassis | awk -F"\"" '{print$2}')
-  if [[ -z $nuuid ]]
-  then
-    echo "wrong node name" >&2
-    exit 1
-  fi
+  router='r4'$switch
+  rdmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  hostname=$(hostname)
+  network=$(kubectl get node $hostname -o yaml | grep "projectcalico.org/IPv4Address" | awk -F": " '{print$2}')
+  ip=$(echo $network | awk -F"/" '{print$1}')
+  mask=$(echo $network | awk -F"/" '{print$2}')
+  proxy=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250/$mask"
+  chassis=$($SB_CMD show | grep -B 1 \""$hostname\"" | grep Chassis | awk -F"\"" '{print$2}')
+  pubsw="public-"$switch
+  swport=$pubsw"-"$[RANDOM%256]$[RANDOM%256]$[RANDOM%256]
+  lcport=$pubsw"-"$hostname
+  nwname=$lcport
+  vmrange=$(ovn-nbctl show | grep -A 2 "rp4"$switch | grep networks | awk -F"\"" '{print$2}')
 
-  
-  sport='sp4'$name
-  router='r4'$name
-  rport='rp4'$name
+  $NB_CMD lrp-add $router $swport $rdmac $proxy
+  $NB_CMD lrp-set-gateway-chassis $swport $chassis
 
-  $NB_CMD lsp-add $switch $sport
-  $NB_CMD lsp-set-addresses $sport dynamic
-  rip=$($NB_CMD list logical_switch_port $sport | grep dynamic_addresses | awk -F"\"" '{print$2}' | awk '{print$2}')
-  rmac=$($NB_CMD list logical_switch_port $sport | grep dynamic_addresses | awk -F"\"" '{print$2}' | awk '{print$1}')
-  $NB_CMD lsp-del $sport
+  $NB_CMD ls-add $pubsw
+  $NB_CMD lsp-add $pubsw $swport  -- set logical_switch_port $swport  type=router -- set logical_switch_port $swport  options:router-port=$swport
+  $NB_CMD lsp-set-addresses $swport $rdmac
 
-  rmk=$($NB_CMD show 'r4'$switch | grep networks | awk -F"\"" '{print$2}' | awk -F"/" '{print$2}')
-  $NB_CMD lr-add $router
-  $NB_CMD lrp-add $router $rport $rmac $rip"/"$rmk
+  $NB_CMD lsp-add $pubsw $lcport -- set logical_switch_port $lcport type=localnet
+  $NB_CMD lsp-set-addresses $lcport unknown
+  $NB_CMD lsp-set-options $lcport network-name=$nwname
 
-  $NB_CMD lsp-add $switch $sport
-  $NB_CMD lsp-set-type $sport router
-  $NB_CMD lsp-set-addresses $sport $rmac
-  $NB_CMD lsp-set-options $sport router-port=$rport
-  $NB_CMD lrp-set-gateway-chassis $rport $nuuid
+  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$nwname:br-native
 
-  #dhcpid=$($NB_CMD show $switch | grep "dhcpv4id-$name-" | awk -F"dhcpv4id-$switch-" '{print$2}')
-  #$NB_CMD lsp-set-dhcpv4-options $sport $dhcpid
-
-  lip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
-  $NB_CMD -- --id=@nat create nat type="dnat_and_snat" logical_ip=$lip external_ip=$fip -- add logical_router $router nat @nat
+  $NB_CMD lr-nat-add $switch dnat_and_snat $fip $vmip
+  $NB_CMD lr-nat-add $switch snat $ip vmrange
 }
 
 function unbind-fip()
@@ -913,19 +902,6 @@ function unbind-fip()
     exit 1
   fi
 
-  name=$(ovs-vsctl list interface | grep -A 14 "$vmmac" | grep name | awk -F"\"" '{print$2}')
-  ne=$(ovs-vsctl show | grep "\"$name\"" | grep Port)
-  if [[ -z $ne ]]
-  then
-    echo "mac does not exist" >&2
-    exit 1
-  fi
-
-  sport='sp4'$name
-  router='r4'$name
-
-  $NB_CMD lr-del $router 
-  $NB_CMD lsp-del $sport
 }
 
 
