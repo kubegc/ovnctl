@@ -861,9 +861,10 @@ function bind-fip()
   router='r4'$switch
   rdmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
   hostname=$(hostname)
-  network=$(kubectl get node $hostname -o yaml | grep "projectcalico.org/IPv4Address" | awk -F": " '{print$2}')
-  ip=$(echo $network | awk -F"/" '{print$1}')
-  mask=$(echo $network | awk -F"/" '{print$2}')
+  #network=$(kubectl get node $hostname -o yaml | grep "projectcalico.org/IPv4Address" | awk -F": " '{print$2}')
+  #ip=$(echo $network | awk -F"/" '{print$1}')
+  ip=$(kubectl get no "vm"$hostname -o yaml | grep "address:" | awk -F": " 'NR==1{print$2}')
+  mask=$(ip a | grep $ip | awk -F"/" 'NR==1{print$2}' | awk '{print$1}')
   proxy=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250/$mask"
   chassis=$($SB_CMD show | grep -B 1 \""$hostname\"" | grep Chassis | awk -F"\"" '{print$2}')
   pubsw="public-"$switch
