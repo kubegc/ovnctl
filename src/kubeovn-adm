@@ -658,7 +658,7 @@ function modify-switch()
     exit 1
   fi
   
-  dhcpid=$(ovn-nbctl show $name | grep "dhcpv4id-$name-" | awk -F "dhcpv4id-$name-" '{print$2}') 
+  dhcpid=$($NB_CMD show $name | grep "dhcpv4id-$name-" | awk -F "dhcpv4id-$name-" '{print$2}') 
  
   rip=$($NB_CMD dhcp-options-get-options $dhcpid | grep "server_id" | awk -F"=" '{print$2}')
   rmac=$($NB_CMD dhcp-options-get-options $dhcpid | grep "server_mac" | awk -F"=" '{print$2}')
@@ -867,10 +867,10 @@ function bind-fip()
   proxy=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250/$mask"
   chassis=$($SB_CMD show | grep -B 1 \""$hostname\"" | grep Chassis | awk -F"\"" '{print$2}')
   pubsw="public-"$switch
-  swport=$pubsw"-"$[RANDOM%256]$[RANDOM%256]$[RANDOM%256]
+  swport=$pubsw"-port"
   lcport=$pubsw"-"$hostname
   nwname=$lcport
-  vmrange=$(ovn-nbctl show | grep -A 2 "rp4"$switch | grep networks | awk -F"\"" '{print$2}')
+  vmrange=$($NB_CMD show | grep -A 2 "rp4"$switch | grep networks | awk -F"\"" '{print$2}')
 
   $NB_CMD lrp-add $router $swport $rdmac $proxy
   $NB_CMD lrp-set-gateway-chassis $swport $chassis
@@ -885,23 +885,28 @@ function bind-fip()
 
   ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$nwname:br-native
 
-  $NB_CMD lr-nat-add $switch dnat_and_snat $fip $vmip
-  $NB_CMD lr-nat-add $switch snat $ip vmrange
+  $NB_CMD lr-nat-add $router dnat_and_snat $fip $vmip
+  $NB_CMD lr-nat-add $router snat $ip $vmrange
 }
 
 function unbind-fip()
 {
   switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
   vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
+  fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
 
-  if [[ -z $1 || -z $switch || -z $vmmac || $2 == "--help" ]]
+  if [[ -z $1 || -z $switch || -z $vmmac || -z $fip ||  $2 == "--help" ]]
   then
     cmddesc
     echo -e "--switch  \tswitch name" >&2
     echo -e "--vmmac   \tvm mac" >&2
+    echo -e "--fip     \tfip" >&2
     exit 1
   fi
 
+  $NB_CMD ls-del "public-"$switch
+
+  $NB_CMD lr-nat-del "r4"$switch dnat_and_snat $fip
 }
 
 
