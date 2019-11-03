@@ -40,15 +40,34 @@ function create-vm()
   sudo ip netns exec $name ip route add default via $gway
 }
 
+function delete-vm()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $name || $2 == "--help" ]]
+  then
+    echo -e "--name       \tVM name" >&2
+    exit 1
+  fi
+
+  sudo $NB_CMD lsp-del "vpc1-"$name
+  sudo ovs-vsctl del-port br-int "veth-"$name
+  sudo ip netns del $name
+}
+
 function help()
 {
   echo -e "Commands:"
-  echo -e "  create-vm   :\tSimulate a VM"
+  echo -e "  create-vm   :\tSimulate: create a VM"
+  echo -e "  delete-vm   :\tSimulate: delete a VM"
 }
 
 case $1 in
   "create-vm")
     create-vm $*
+    ;;
+  "delete-vm")
+    delete-vm $*
     ;;
   *)
   help
