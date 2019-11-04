@@ -4,6 +4,85 @@ NB_PORT="6641"
 
 NB_CMD="ovn-nbctl --db=tcp:$MASTER:$NB_PORT"
 
+function start-central()
+{
+  systemctl restart openvswitch
+  systemctl enable  openvswitch
+  systemctl start   ovn-ovsdb
+  systemctl enable  ovn-ovsdb
+  systemctl start   ovn-northd
+  systemctl enable  ovn-northd
+  systemctl start   ovn-controller
+  systemctl enable  ovn-controller
+  systemctl start   ovn-controller-vtep
+  systemctl enable  ovn-controller-vtep
+
+  ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $ip || $2 == "--help" ]]
+  then
+    echo -e "--IP       \tIP" >&2
+    exit 0
+  fi
+
+  sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
+  sudo ovs-vsctl set open . external-ids:ovn-remote=unix:/usr/var/run/openvswitch/ovnsb_db.sock
+  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
+  sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
+
+  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$ip:6642
+  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$ip
+
+}
+
+function stop-central()
+{
+  systemctl stop    ovn-ovsdb
+  systemctl disable ovn-ovsdb
+  systemctl stop    ovn-northd
+  systemctl disable ovn-northd
+  systemctl stop    ovn-controller
+  systemctl disable ovn-controller
+  systemctl stop    ovn-controller-vtep
+  systemctl disable ovn-controller-vtep
+
+}
+
+function start-worker()
+{
+  systemctl restart openvswitch
+  systemctl enable  openvswitch
+  systemctl start   ovn-controller
+  systemctl enable  ovn-controller
+  systemctl start   ovn-controller-vtep
+  systemctl enable  ovn-controller-vtep
+
+  master=$(echo $* | awk -F"--master" '{print$2}' | awk '{print$1}')
+  ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $master || -z $ip || $2 == "--help" ]]
+  then
+    echo -e "--master   \tmaster" >&2
+    echo -e "--IP       \tIP" >&2
+    exit 0
+  fi
+
+  sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
+  sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
+  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
+  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$ip
+
+}
+
+function stop-worker()
+{
+  systemctl stop    ovn-controller
+  systemctl disable ovn-controller
+  systemctl stop    ovn-controller-vtep
+  systemctl disable ovn-controller-vtep
+
+}
+
 function create-vm()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
@@ -58,11 +137,27 @@ function delete-vm()
 function help()
 {
   echo -e "Commands:"
-  echo -e "  create-vm   :\tSimulate: create a VM"
-  echo -e "  delete-vm   :\tSimulate: delete a VM"
+  echo -e "  start-central  :\t(Init): start central node"
+  echo -e "  stop-central   :\t(Init): stop  central node"
+  echo -e "  start-worker   :\t(Init): start worker  node"
+  echo -e "  stop-worker    :\t(Init): stop  worker  node"
+  echo -e "  create-vm      :\t(Simu): create a VM"
+  echo -e "  delete-vm      :\t(Simu): delete a VM"
 }
 
 case $1 in
+  "start-central")
+    start-central $*
+    ;;
+  "stop-central")
+    stop-central $*
+    ;;
+  "start-worker")
+    start-worker $*
+    ;;
+  "stop-worker")
+    stop-worker $*
+    ;;
   "create-vm")
     create-vm $*
     ;;
