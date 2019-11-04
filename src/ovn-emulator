@@ -3,7 +3,7 @@ nic="ens33"
 
 NB_PORT="6641"
 
-NB_CMD="ovn-nbctl --db=tcp:$MASTER:$NB_PORT"
+NB_CMD="ovn-nbctl --db=tcp:$master:$NB_PORT"
 
 ### Init
 
