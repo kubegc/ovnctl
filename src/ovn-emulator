@@ -2,8 +2,11 @@ master="192.168.42.144"
 nic="ens33"
 
 NB_PORT="6641"
+SB_PORT="6642"
 
 NB_CMD="ovn-nbctl --db=tcp:$master:$NB_PORT"
+SB_CMD="ovn-sbctl --db=tcp:$master:$SB_PORT"
+
 
 ### Init
 
@@ -153,6 +156,75 @@ function create-switch()
 
 }
 
+
+function bind-fip()
+{
+  switch=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
+  fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
+ 
+  if [[ -z $1 || -z $switch || -z $vmmac || -z $fip || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--swName  \tswitch name" >&2
+    echo -e "--vmmac   \tvm mac" >&2
+    echo -e "--fip     \tflating ip" >&2
+    exit 1
+  fi
+
+  vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
+
+  router='r4'$switch
+  rdmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  ip=$(thisIP)
+  proxy=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250/24"
+  rdport=$router"-port"
+  $NB_CMD lrp-add $router $rdport $rdmac $proxy
+  
+  chassis=$($SB_CMD show | grep -B 1 \""$(hostname)\"" | grep Chassis | awk -F"\"" '{print$2}') 
+  $NB_CMD lrp-set-gateway-chassis $rdport $chassis
+
+  pubsw="public-"$switch
+  pubport=$pubsw"-port"
+  $NB_CMD ls-add $pubsw
+  $NB_CMD lsp-add $pubsw $pubport  
+  $NB_CMD lsp-set-type $pubport router
+  $NB_CMD lsp-set-addresses $pubport $rdmac
+  $NB_CMD lsp-set-options $pubport router-port=$rdport
+  
+
+  lcport=$pubsw"-"$(hostname)
+  $NB_CMD lsp-add $pubsw $lcport
+  $NB_CMD lsp-set-addresses $lcport unknown
+  $NB_CMD lsp-set-type $lcport localnet
+  $NB_CMD lsp-set-options $lcport network-name=$lcport
+
+  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$lcport:br-ex
+
+  $NB_CMD lr-nat-add $router dnat_and_snat $fip $vmip
+  $NB_CMD lr-nat-add $router snat $ip $($NB_CMD show | grep -A 2 "rp4"$switch | grep networks | awk -F"\"" '{print$2}')
+}
+
+function unbind-fip()
+{
+  switch=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
+  fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $switch || -z $vmmac || -z $fip ||  $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--switch  \tswitch name" >&2
+    echo -e "--vmmac   \tvm mac" >&2
+    echo -e "--fip     \tfip" >&2
+    exit 1
+  fi
+
+  $NB_CMD ls-del "public-"$switch
+
+  $NB_CMD lr-nat-del "r4"$switch dnat_and_snat $fip
+}
+
 function delete-switch()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
@@ -238,8 +310,10 @@ function help()
   echo -e "  stop-central   :\t(Init): stop  central node"
   echo -e "  start-worker   :\t(Init): start worker  node"
   echo -e "  stop-worker    :\t(Init): stop  worker  node"
-  echo -e "  create-switch  :\t(L3  ): Create L3 switch and gateway"
-  echo -e "  delete-switch  :\t(L3  ): Remove L3 switch and gateway"
+  echo -e "  create-switch  :\t(L3  ): create L3 switch and gateway"
+  echo -e "  delete-switch  :\t(L3  ): remove L3 switch and gateway"
+  echo -e "  bind-fip       :\t(L3  ): bind floating IP"
+  echo -e "  unbind-fip     :\t(L3  ): unbind floating IP"
   echo -e "  create-vm      :\t(Simu): create a VM"
   echo -e "  delete-vm      :\t(Simu): delete a VM"
 }
@@ -262,6 +336,12 @@ case $1 in
     ;;
   "delete-switch")
     delete-switch $*
+    ;;
+  "bind-fip")
+    bind-fip $*
+    ;;
+  "unbind-fip")
+    unbind-fip $*
     ;;
   "create-vm")
     create-vm $*

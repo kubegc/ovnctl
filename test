@@ -1,2 +1,0 @@
-aa=$[RANDOM%256]$[RANDOM%256]$[RANDOM%256]$[RANDOM%256]
-echo $aa
