@@ -47,6 +47,8 @@ TABLE_DHCP="DHCP_Options"
 ## OVN core, please install Kubernetes first
 
 MASTER=$(cat /root/.kube/config  | grep server |awk -F"server:" '{print$2}' | awk -F"https://" '{print$2}' | awk -F":" '{print$1}')
+THISIP=$(kubectl get node $(hostname) -o yaml | grep -B 1 "type: InternalIP" | grep address | awk -F": " '{print$2}')
+
 
 NB_PORT="6641"
 SB_PORT="6642"
@@ -63,16 +65,15 @@ SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
 
 function start-central()
 {
-  systemctl restart openvswitch
-  systemctl enable  openvswitch
+  
+  start-worker
+
   systemctl start   ovn-ovsdb
   systemctl enable  ovn-ovsdb
   systemctl start   ovn-northd
   systemctl enable  ovn-northd
   systemctl start   ovn-controller
   systemctl enable  ovn-controller
-  systemctl start   ovn-controller-vtep
-  systemctl enable  ovn-controller-vtep
 
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
   sudo ovs-vsctl set open . external-ids:ovn-remote=unix:/usr/var/run/openvswitch/ovnsb_db.sock
@@ -84,21 +85,18 @@ function start-central()
 
 function stop-central()
 {
+  stop-worker
+
   systemctl stop    ovn-ovsdb
   systemctl disable ovn-ovsdb
   systemctl stop    ovn-northd
   systemctl disable ovn-northd
-  systemctl stop    ovn-controller
-  systemctl disable ovn-controller
-  systemctl stop    ovn-controller-vtep
-  systemctl disable ovn-controller-vtep
-  
-  #bash /usr/bin/vtep-init-ctl.sh stop-vtep >/dev/null  2>&1 
 }
 
 function start-worker()
 {
-  systemctl restart openvswitch
+
+  systemctl start   openvswitch
   systemctl enable  openvswitch
   systemctl start   ovn-controller
   systemctl enable  ovn-controller
@@ -109,9 +107,7 @@ function start-worker()
   #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
   sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
   sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$MASTER:6642
-  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$(thisIP) 
-
-  #bash /usr/bin/vtep-init-ctl.sh start-vtep >/dev/null  2>&1  &
+  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$THISIP 
 }
 
 function stop-worker()
@@ -120,14 +116,13 @@ function stop-worker()
   systemctl disable ovn-controller
   systemctl stop    ovn-controller-vtep
   systemctl disable ovn-controller-vtep
-
-  #bash /usr/bin/vtep-init-ctl.sh stop-vtep >/dev/null  2>&1 
 }
 
 function clear()
 {
-  rm -rf /etc/openvswitch/*db*
-  rm -rf /etc/openvswitch/system-id.conf
+  rm -rf /etc/openvswitch/*db* 2>&1
+  rm -rf /etc/openvswitch/.* 2>&1
+  rm -rf /etc/openvswitch/system-id.conf 2>&1
 }
 
 #function create-br-c-br()
@@ -136,13 +131,6 @@ function clear()
 #  ovs-vsctl --may-exist add-port $2 patch-$1 -- set interface patch-$1 type=patch -- set interface patch-$1 option:peer=patch-$2
 #}
 
-
-function thisIP()
-{
-  hostname=$(hostname)
-  thisIP=$(kubectl get no $hostname -o yaml | grep "address:" | grep -v "$hostname" | awk -F": " '{print$2}' | awk 'NR=1')
-  echo $thisIP
-}
 
 ###########################################################
 ##
