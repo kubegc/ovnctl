@@ -13,8 +13,8 @@ THISIP=$(cat /etc/ovn-emulator.conf | grep thisip | awk -F"=" '{print$2}')
 NB_PORT="6641"
 SB_PORT="6642"
 
-NB_CMD="ovn-nbctl --db=tcp:$master:$NB_PORT"
-SB_CMD="ovn-sbctl --db=tcp:$master:$SB_PORT"
+NB_CMD="ovn-nbctl --db=tcp:$MASTER:$NB_PORT"
+SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
 
 ###########################################################
 ##
@@ -262,6 +262,7 @@ function create-switch()
   fi
  
   $NB_CMD ls-add $name
+  $NB_CMD set Logical_Switch $name other_config:subnet=$subn
 
   if [[ -n $excl ]]
   then
@@ -269,44 +270,42 @@ function create-switch()
     $NB_CMD set Logical_Switch $name other_config:exclude_ips="$nexcl"
   fi
  
-  if [[ -n $subn ]]
+
+  rip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".1"
+  if [[ -n $gway ]]
   then
-    router='r4'$name
-    rport='rp4'$name
-    rmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
-    
-    rip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".1"
-    if [[ -n $gway ]]
-    then
-      rip=$gway
-    fi
-   
-    mtu="1500"
-    if [[ -n $imtu ]]
-    then
-      mtu=$imtu
-    fi
- 
-    rmk=$(echo $subn | awk -F"/" '{print$2}')
-    $NB_CMD lr-add $router
-    $NB_CMD lrp-add $router $rport $rmac $rip"/"$rmk
-  
-    sport='sp4'$name
-    $NB_CMD set Logical_Switch $name other_config:subnet=$subn
-    $NB_CMD lsp-add $name $sport
-    $NB_CMD lsp-set-type $sport router
-    $NB_CMD lsp-set-addresses $sport $rmac
-    $NB_CMD lsp-set-options $sport router-port=$rport
-
-    if [[ -z $dnss ]]
-    then
-      did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\" \"mtu\"=\"$mtu\"")
-    else
-      did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\" \"mtu\"=\"$mtu\" \"dns_server\"=\"$dnss\"")
-    fi
-
-    $NB_CMD lsp-add $name "dhcpv4id-$name-"$did
+    rip=$gway
   fi
+   
+  router='r4'$name
+  $NB_CMD lr-add $router
+   
+  rport='rp4'$name
+  rmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  rmk=$(echo $subn | awk -F"/" '{print$2}')
+  $NB_CMD lrp-add $router $rport $rmac $rip"/"$rmk
+  
+  sport='sp4'$name
+  $NB_CMD lsp-add $name $sport
+  $NB_CMD lsp-set-type $sport router
+  $NB_CMD lsp-set-addresses $sport $rmac
+  $NB_CMD lsp-set-options $sport router-port=$rport
+
+
+  mtu="1500"
+  if [[ -n $imtu ]]
+  then
+    mtu=$imtu
+  fi
+
+  if [[ -z $dnss ]]
+  then
+    did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\" \"mtu\"=\"$mtu\"")
+  else
+    did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\" \"mtu\"=\"$mtu\" \"dns_server\"=\"$dnss\"")
+  fi
+
+  $NB_CMD lsp-add $name "dhcpv4id-$name-"$did
 
 }
 
