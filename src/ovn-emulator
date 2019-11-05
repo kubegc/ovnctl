@@ -1,5 +1,14 @@
-master="192.168.42.144"
-nic="ens33"
+###################################################
+###
+###  Copyright (2019, ) Institute of Software
+###           Chinese Academy of Sciences
+###         Author: wuheng@otcaix.iscas.ac.cn
+###
+###
+####################################################
+
+MASTER=$(cat /etc/ovn-emulator.conf | grep master | awk -F"=" '{print$2}')
+THISIP=$(cat /etc/ovn-emulator.conf | grep thisip | awk -F"=" '{print$2}')
 
 NB_PORT="6641"
 SB_PORT="6642"
@@ -7,48 +16,46 @@ SB_PORT="6642"
 NB_CMD="ovn-nbctl --db=tcp:$master:$NB_PORT"
 SB_CMD="ovn-sbctl --db=tcp:$master:$SB_PORT"
 
-
-### Init
+###########################################################
+##
+##  init env
+##
+##########################################################
 
 function start-central()
 {
-  systemctl restart openvswitch
-  systemctl enable  openvswitch
+  
+  start-worker
+
   systemctl start   ovn-ovsdb
   systemctl enable  ovn-ovsdb
   systemctl start   ovn-northd
   systemctl enable  ovn-northd
   systemctl start   ovn-controller
   systemctl enable  ovn-controller
-  systemctl start   ovn-controller-vtep
-  systemctl enable  ovn-controller-vtep
 
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
   sudo ovs-vsctl set open . external-ids:ovn-remote=unix:/usr/var/run/openvswitch/ovnsb_db.sock
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
+  #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
   sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
-
-  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
-  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$(thisIP)
 
 }
 
 function stop-central()
 {
+  stop-worker
+
   systemctl stop    ovn-ovsdb
   systemctl disable ovn-ovsdb
   systemctl stop    ovn-northd
   systemctl disable ovn-northd
-  systemctl stop    ovn-controller
-  systemctl disable ovn-controller
-  systemctl stop    ovn-controller-vtep
-  systemctl disable ovn-controller-vtep
-
 }
 
 function start-worker()
 {
-  systemctl restart openvswitch
+
+  systemctl start   openvswitch
   systemctl enable  openvswitch
   systemctl start   ovn-controller
   systemctl enable  ovn-controller
@@ -56,10 +63,10 @@ function start-worker()
   systemctl enable  ovn-controller-vtep
 
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
+  #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
   sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
-  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$master:6642
-  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$(thisIP)
-
+  sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$MASTER:6642
+  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$THISIP 
 }
 
 function stop-worker()
@@ -68,16 +75,163 @@ function stop-worker()
   systemctl disable ovn-controller
   systemctl stop    ovn-controller-vtep
   systemctl disable ovn-controller-vtep
-
 }
 
-function thisIP()
+
+###########################################################
+##
+##  L2 bridge
+##
+##########################################################
+
+
+function create-bridge()
 {
-  ip=$(ifconfig $nic | grep "inet " | awk '{print$2}')
-  echo $ip
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  nic=$(echo $* | awk -F"--nic" '{print$2}' | awk '{print$1}')
+  vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $name || -z $nic || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name  \tbridge name" >&2
+    echo -e "--nic   \tnic name" >&2
+    echo -e "--vlan  \tvlan id, default is \"vlan=0\"" >&2
+    exit 1
+  fi
+
+  if [[ -z $vlan ]]
+  then
+    vlan=0
+  fi
+
+  ################################
+  if [[ ! -f $IFCFG"ifcfg-BRX" ]]
+  then
+     echo DEVICE=BRX           >> /etc/sysconfig/network-scripts/ifcfg-BRX
+     echo DEVICETYPE=ovs       >> /etc/sysconfig/network-scripts/ifcfg-BRX
+     echo TYPE=OVSBridge       >> /etc/sysconfig/network-scripts/ifcfg-BRX
+     echo ONBOOT=yes           >> /etc/sysconfig/network-scripts/ifcfg-BRX
+  fi
+
+  if [[ ! -f $IFCFG"ifcfg-ORG" ]]
+  then
+     echo TYPE=OVSPort         >> /etc/sysconfig/network-scripts/ifcfg-ORG
+     echo DEVICE=ORG           >> /etc/sysconfig/network-scripts/ifcfg-ORG
+     echo ONBOOT=yes           >> /etc/sysconfig/network-scripts/ifcfg-ORG
+     echo DEVICETYPE=ovs       >> /etc/sysconfig/network-scripts/ifcfg-ORG
+     echo OVS_BRIDGE=BRX       >> /etc/sysconfig/network-scripts/ifcfg-ORG
+  fi
+  ################################
+  ################################
+  res=$(systemctl status openvswitch | grep Active | awk -F":" '{print $2}' | awk '{print$1}')
+  if [[ $res != "active" ]]
+  then
+    echo "please start openvswitch first" >&2
+    exit 1
+  fi
+
+  if [[ ! -f $IFCFG"ifcfg-$nic" ]]
+  then
+    echo "wrong NIC name" >&2
+    exit 1
+  fi  
+
+  ################################
+  ################################
+  
+  if [[ ! -f $IFCFG"ifcfg-$nic.bak" ]]
+  then
+    cp $IFCFG"ifcfg-$nic" $IFCFG"ifcfg-$nic.bak"
+  fi
+
+  rm -rf $IFCFG"ifcfg-$nic"
+  rm -rf $IFCFG"ifcfg-$name"
+
+  mv $IFCFG"ifcfg-ORG" $IFCFG"ifcfg-$nic"
+  mv $IFCFG"ifcfg-BRX" $IFCFG"ifcfg-$name"
+
+  ovs-vsctl --if-exist del-br $name
+  ovs-vsctl add-br $name
+  ovs-vsctl add-br $name"-"$vlan $name $vlan
+  ovs-vsctl set interface $name"-"$vlan type=internal
+
+  static=$(cat $IFCFG"ifcfg-$nic.bak" | grep BOOTPROTO | grep static)
+  ip=$(cat $IFCFG"ifcfg-$nic.bak" | grep IPADDR)
+  mask=$(cat $IFCFG"ifcfg-$nic.bak" | grep NETMASK)
+  prefix=$(cat $IFCFG"ifcfg-$nic.bak" |  grep PREFIX)
+  gw=$(cat $IFCFG"ifcfg-$nic.bak" | grep GATEWAY)
+  dns=$(cat $IFCFG"ifcfg-$nic.bak" | grep DNS)
+  
+  sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$name"
+  sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$nic"
+  sed -i "s/ORG/$nic/g" $IFCFG"ifcfg-$nic"
+  if [[ -z $static ]]
+  then
+    echo "BOOTPROTO=dhcp" >> $IFCFG"ifcfg-$name"
+  else
+    echo $ip >> $IFCFG"ifcfg-$name"
+    echo $mask >> $IFCFG"ifcfg-$name"
+    echo $prefix >> $IFCFG"ifcfg-$name"
+    echo $gw >> $IFCFG"ifcfg-$name"
+    echo $dns >> $IFCFG"ifcfg-$name"
+  fi
+
+  ovs-vsctl add-port $name $nic && ifdown $nic && ifup $nic && ifup $name
+  ip link set dev $nic promisc on
+  ip link set dev $name promisc on
 }
 
-### L3
+function delete-bridge()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  nic=$(echo $* | awk -F"--nic" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $nic || -z $nic || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name  \tbridge name" >&2
+    echo -e "--nic   \tnic name" >&2
+    exit 1
+  fi
+
+  ################################
+  res=$(systemctl status openvswitch | grep Active | awk -F":" '{print $2}' | awk '{print$1}')
+  if [[ $res != "active" ]]
+  then
+    echo "please start openvswitch first" >&2
+    exit 1
+  fi
+
+  if [[ ! -f $IFCFG"ifcfg-$nic" ]]
+  then
+    echo "wrong NIC name" >&2
+    exit 1
+  fi
+
+  ################################
+
+  rm -rf $IFCFG"ifcfg-$name"
+
+  if [[ ! -f $IFCFG"ifcfg-$nic.bak" ]]
+  then
+    echo "$nic is not a part of openvswitch" >&2
+    exit 1
+  fi 
+  rm -rf $IFCFG"ifcfg-$nic"
+
+ 
+  mv -f $IFCFG"ifcfg-$nic.bak" $IFCFG"ifcfg-$nic"
+
+  ovs-vsctl --if-exist del-br $name && ifdown $nic && ifup $nic
+
+}
+
+###########################################################
+##
+##  L3 switch
+##
+##########################################################
 
 function create-switch()
 {
@@ -310,8 +464,10 @@ function help()
   echo -e "  stop-central   :\t(Init): stop  central node"
   echo -e "  start-worker   :\t(Init): start worker  node"
   echo -e "  stop-worker    :\t(Init): stop  worker  node"
+  echo -e "  create-bridge  :\t(L2  ): create L2 bridge"
+  echo -e "  delete-bridge  :\t(L2  ): delete L2 bridge"
   echo -e "  create-switch  :\t(L3  ): create L3 switch and gateway"
-  echo -e "  delete-switch  :\t(L3  ): remove L3 switch and gateway"
+  echo -e "  delete-switch  :\t(L3  ): delete L3 switch and gateway"
   echo -e "  bind-fip       :\t(L3  ): bind floating IP"
   echo -e "  unbind-fip     :\t(L3  ): unbind floating IP"
   echo -e "  create-vm      :\t(Simu): create a VM"
@@ -330,6 +486,12 @@ case $1 in
     ;;
   "stop-worker")
     stop-worker $*
+    ;;
+  "create-bridge")
+    create-bridge $*
+    ;;
+  "delete-bridge")
+    delete-bridge $*
     ;;
   "create-switch")
     create-switch $*
