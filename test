@@ -1,0 +1,12 @@
+list=""
+for name in `ovn-sbctl show | grep Chassis`
+do 
+  chassis=$(echo $name | awk -F"\"" '{print$2}')
+  if [[ -n $chassis ]]
+  then
+    list=$list","$chassis
+  fi
+done
+list="\"{"${list:1}"}\""
+echo $list
+

@@ -312,7 +312,18 @@ function create-switch()
   join="join4"$name
   jmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
 
-  $NB_CMD create Logical_Router name=$gwrn options:chassis=3f8042ca-7716-4044-b421-1652991c626b
+  list=""
+  for name in `$NB_CMD show | grep Chassis`
+  do
+    chassis=$(echo $name | awk -F"\"" '{print$2}')
+    if [[ -n $chassis ]]
+    then
+      list=$list","$chassis
+    fi
+  done
+  list="\"{"${list:1}"}\""
+
+  $NB_CMD create Logical_Router name=$gwrn options:chassis=$list
   $NB_CMD ls-add $join
 
   $NB_CMD lrp-add $gwrn $gwrn"-join" $jmac 192.168.255.1/24
@@ -349,6 +360,10 @@ function create-switch()
 
   ovn-nbctl -- --id=@nat create nat type="snat" logical_ip=$subn external_ip=$nnip -- add logical_router $gwrn nat @nat
 
+  $NB_CMD lsp-add $outf $outf"-localnet"
+  $NB_CMD lsp-set-addresses $outf"-localnet" unknown
+  $NB_CMD lsp-set-type $outf"-localnet" localnet
+  $NB_CMD lsp-set-options $outf"-localnet" network_name=$outf
 }
 
 
@@ -368,13 +383,7 @@ function bind-fip()
 
   vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
 
-  outf="outflow4"$switch
-  $NB_CMD lsp-add $outf $outf"-localnet"
-  $NB_CMD lsp-set-addresses $outf"-localnet" unknown
-  $NB_CMD lsp-set-type $outf"-localnet" localnet
-  $NB_CMD lsp-set-options $outf"-localnet" network_name=$outf
-
-  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$outf:br-ex
+  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings="outflow4"$switch:br-ex
 
   $NB_CMD -- --id=@nat create nat type="dnat_and_snat" logical_ip=$vmip external_ip=$fip -- add logical_router "gw"$switch nat @nat  
 }
