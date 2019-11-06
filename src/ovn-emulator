@@ -307,6 +307,48 @@ function create-switch()
 
   $NB_CMD lsp-add $name "dhcpv4id-$name-"$did
 
+  ## step 1
+  gwrn="gw"$name
+  join="join4"$name
+  jmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+
+  $NB_CMD create Logical_Router name=$gwrn options:chassis=3f8042ca-7716-4044-b421-1652991c626b
+  $NB_CMD ls-add $join
+
+  $NB_CMD lrp-add $gwrn $gwrn"-join" $jmac 192.168.255.1/24
+  $NB_CMD lsp-add $join "join-"$gwrn
+  $NB_CMD lsp-set-type "join-"$gwrn router
+  $NB_CMD lsp-set-addresses "join-"$gwrn $jmac
+  $NB_CMD lsp-set-options "join-"$gwrn router-port=$gwrn"-join"
+
+  ## step 2
+
+  kmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  $NB_CMD lrp-add $router $router"-join" $kmac 192.168.255.2/24
+  $NB_CMD lsp-add $join "join-"$router
+  $NB_CMD lsp-set-type "join-"$router router
+  $NB_CMD lsp-set-addresses "join-"$router $kmac
+  $NB_CMD lsp-set-options "join-"$router router-port=$router"-join"
+
+  nrip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".0"
+  $NB_CMD lr-route-add $gwrn   "$nrip/$rmac" 192.168.255.2
+  $NB_CMD lr-route-add $router "0.0.0.0/0" 192.168.255.1
+
+  ## step 3
+  outf="outflow4"$swName
+  lmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+
+  nnip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".250"
+  $NB_CMD lrp-add $gwrn $gwrn"-outflow" $lmac $nnip"/"$rmk
+
+  $NB_CMD ls-add $outf
+  $NB_CMD lsp-add $outf "outflow-"$gwrn
+  $NB_CMD lsp-set-type "outflow-"$gwrn router
+  $NB_CMD lsp-set-addresses "outflow-"$gwrn $lmac
+  $NB_CMD lsp-set-options "outflow-"$gwrn router-port=$gwrn"-outflow"
+
+  ovn-nbctl -- --id=@nat create nat type="snat" logical_ip=$subn external_ip=$nnip -- add logical_router gw1 nat @nat
+
 }
 
 
@@ -327,35 +369,15 @@ function bind-fip()
 
   vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
 
-  router='r4'$switch
-  rdmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
-  ip=$(thisIP)
-  proxy=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250/24"
-  rdport=$router"-port"
-  $NB_CMD lrp-add $router $rdport $rdmac $proxy
-  
-  chassis=$($SB_CMD show | grep -B 1 \""$(hostname)\"" | grep Chassis | awk -F"\"" '{print$2}') 
-  $NB_CMD lrp-set-gateway-chassis $rdport $chassis
+  outf="outflow4"$swName
+  $NB_CMD lsp-add $outf $outf"-localnet"
+  $NB_CMD lsp-set-addresses $outf"-localnet" unknown
+  $NB_CMD lsp-set-type $outf"-localnet" localnet
+  $NB_CMD lsp-set-options $outf"-localnet" network_name=$outf
 
-  pubsw="public-"$switch
-  pubport=$pubsw"-port"
-  $NB_CMD ls-add $pubsw
-  $NB_CMD lsp-add $pubsw $pubport  
-  $NB_CMD lsp-set-type $pubport router
-  $NB_CMD lsp-set-addresses $pubport $rdmac
-  $NB_CMD lsp-set-options $pubport router-port=$rdport
-  
+  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$outf:br-ex
 
-  lcport=$pubsw"-"$(hostname)
-  $NB_CMD lsp-add $pubsw $lcport
-  $NB_CMD lsp-set-addresses $lcport unknown
-  $NB_CMD lsp-set-type $lcport localnet
-  $NB_CMD lsp-set-options $lcport network-name=$lcport
-
-  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$lcport:br-ex
-
-  $NB_CMD lr-nat-add $router dnat_and_snat $fip $vmip
-  $NB_CMD lr-nat-add $router snat $ip $($NB_CMD show | grep -A 2 "rp4"$switch | grep networks | awk -F"\"" '{print$2}')
+  ovn-nbctl -- --id=@nat create nat type="dnat_and_snat" logical_ip=$vmip external_ip=$fip -- add logical_router gw1 nat @nat  
 }
 
 function unbind-fip()
