@@ -331,14 +331,14 @@ function create-switch()
   $NB_CMD lsp-set-options "join-"$router router-port=$router"-join"
 
   nrip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".0"
-  $NB_CMD lr-route-add $gwrn   "$nrip/$rmac" 192.168.255.2
+  $NB_CMD lr-route-add $gwrn   "$nrip/$rmk" 192.168.255.2
   $NB_CMD lr-route-add $router "0.0.0.0/0" 192.168.255.1
 
   ## step 3
-  outf="outflow4"$swName
+  outf="outflow4"$name
   lmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
 
-  nnip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".250"
+  nnip=$(echo $THISIP | awk -F"." '{print$1"."$2"."$3}')".250"
   $NB_CMD lrp-add $gwrn $gwrn"-outflow" $lmac $nnip"/"$rmk
 
   $NB_CMD ls-add $outf
@@ -347,7 +347,7 @@ function create-switch()
   $NB_CMD lsp-set-addresses "outflow-"$gwrn $lmac
   $NB_CMD lsp-set-options "outflow-"$gwrn router-port=$gwrn"-outflow"
 
-  ovn-nbctl -- --id=@nat create nat type="snat" logical_ip=$subn external_ip=$nnip -- add logical_router gw1 nat @nat
+  ovn-nbctl -- --id=@nat create nat type="snat" logical_ip=$subn external_ip=$nnip -- add logical_router $gwrn nat @nat
 
 }
 
@@ -421,7 +421,11 @@ function delete-switch()
   router='r4'$name
   dhcpid=$($NB_CMD show $name | grep "dhcpv4id-$name-" | awk -F"dhcpv4id-$name-" '{print$2}')
   $NB_CMD ls-del $name  >/dev/null  2>&1 
+  $NB_CMD ls-del "outflow4"$name  >/dev/null  2>&1 
+  $NB_CMD ls-del "join4"$name  >/dev/null  2>&1 
+  $NB_CMD ls-del $name  >/dev/null  2>&1 
   $NB_CMD lr-del $router >/dev/null  2>&1
+  $NB_CMD lr-del "gw"$name >/dev/null  2>&1
   $NB_CMD dhcp-options-del $dhcpid >/dev/null  2>&1  
 }
 
