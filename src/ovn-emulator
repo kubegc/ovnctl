@@ -358,7 +358,7 @@ function bind-fip()
   rmk=$(echo $fip | awk -F"/" '{print$2}')
   pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
   $NB_CMD lrp-add $router $fport  $(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256]) $pip"/"$rmk
-  $NB_CMD lrp-set-gateway-chassis name=$fport options:chassis=$($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
+  $NB_CMD lrp-set-gateway-chassis $fport options:chassis=$($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
 
   
   pswn="public-"${vmmac//:/}"-"$(hostname)
