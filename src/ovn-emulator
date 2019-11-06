@@ -360,7 +360,6 @@ function bind-fip()
  
   if [[ -z $1 || -z $switch || -z $vmmac || -z $fip || $2 == "--help" ]]
   then
-    cmddesc
     echo -e "--swName  \tswitch name" >&2
     echo -e "--vmmac   \tvm mac" >&2
     echo -e "--fip     \tflating ip" >&2
@@ -369,7 +368,7 @@ function bind-fip()
 
   vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
 
-  outf="outflow4"$swName
+  outf="outflow4"$switch
   $NB_CMD lsp-add $outf $outf"-localnet"
   $NB_CMD lsp-set-addresses $outf"-localnet" unknown
   $NB_CMD lsp-set-type $outf"-localnet" localnet
@@ -377,7 +376,7 @@ function bind-fip()
 
   ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$outf:br-ex
 
-  ovn-nbctl -- --id=@nat create nat type="dnat_and_snat" logical_ip=$vmip external_ip=$fip -- add logical_router gw1 nat @nat  
+  $NB_CMD -- --id=@nat create nat type="dnat_and_snat" logical_ip=$vmip external_ip=$fip -- add logical_router "gw"$switch nat @nat  
 }
 
 function unbind-fip()
