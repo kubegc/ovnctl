@@ -285,7 +285,7 @@ function create-switch()
     exit 1
   fi
  
-  ## create
+  ## create and config
   $NB_CMD ls-add $name
   $NB_CMD set Logical_Switch $name other_config:subnet=$subn
 
@@ -352,9 +352,34 @@ function bind-fip()
 
   vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
 
-  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings="outflow4"$switch:br-ex
+  router="r4"$switch
+  fport="from-"$router"-"${vmmac//:/}
+  $NB_CMD create Logical_Router name=$gwrn options:chassis=$(ovn-sbctl show | grep -B 1 "hostname: $(hostname)" | grep Chassis | awk -F"\"" '{print$2}')
+  
+  ip=$(echo $fip | awk -F"/" '{print$1}')
+  rmk=$(echo $fip | awk -F"/" '{print$2}')
+  pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
+  ovn-nbctl lrp-add $router $fport  $(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256]) $pip"/"$rmk
 
-  $NB_CMD -- --id=@nat create nat type="dnat_and_snat" logical_ip=$vmip external_ip=$fip -- add logical_router "gw"$switch nat @nat  
+  
+  pswn="public-"${vmmac//:/}"-"$(hostname)
+  imac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  $NB_CMD lsp-add $pswn "to-"$pswn
+  $NB_CMD lsp-set-type "to-"$pswn router
+  $NB_CMD lsp-set-addresses "to-"$pswn $imac
+  $NB_CMD lsp-set-options "to-"$pswn router-port="from-"$router"-"${vmmac//:/}
+  
+  
+  $NB_CMD lsp-add $pswn $pswn"-localnet"
+  $NB_CMD lsp-set-addresses $pswn"-localnet" unknown
+  $NB_CMD lsp-set-type $pswn"-localnet" localnet
+  $NB_CMD lsp-set-options $pswn"-localnet" network_name=$pswn
+  
+  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:br-ex
+
+  $NB_CMD lr-nat-add $router dnat_and_snat $ip $vmip
+  #$NB_CMD lr-nat-add $router snat $pip 100.69.0.0/16 
+  
 }
 
 function unbind-fip()
