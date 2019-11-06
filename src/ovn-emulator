@@ -357,13 +357,14 @@ function bind-fip()
   ip=$(echo $fip | awk -F"/" '{print$1}')
   rmk=$(echo $fip | awk -F"/" '{print$2}')
   pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
-  $NB_CMD lrp-add $router $fport  $(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256]) $pip"/"$rmk
+  imac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  
+  $NB_CMD lrp-add $router $fport  $imac $pip"/"$rmk
   $NB_CMD lrp-set-gateway-chassis $fport options:chassis=$($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
 
   
   pswn="public-"${vmmac//:/}"-"$(hostname)
   
-  imac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
   $NB_CMD ls-add $pswn
   $NB_CMD lsp-add $pswn "to-"$pswn
   $NB_CMD lsp-set-type "to-"$pswn router
