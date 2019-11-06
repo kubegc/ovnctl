@@ -313,15 +313,16 @@ function create-switch()
   jmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
 
   list=""
-  for name in `$NB_CMD show | grep Chassis`
+  for line in `$SB_CMD show | grep Chassis`
   do
-    chassis=$(echo $name | awk -F"\"" '{print$2}')
+    chassis=$(echo $line | awk -F"\"" '{print$2}')
     if [[ -n $chassis ]]
     then
       list=$list","$chassis
     fi
   done
   list="\"{"${list:1}"}\""
+  echo $list
 
   $NB_CMD create Logical_Router name=$gwrn options:chassis=$list
   $NB_CMD ls-add $join
