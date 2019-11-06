@@ -479,16 +479,18 @@ function create-vm()
 function delete-vm()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
-  
-  if [[ -z $1 || -z $name || $2 == "--help" ]]
+  switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}') 
+ 
+  if [[ -z $1 || -z $name || -z $switch || $2 == "--help" ]]
   then
     echo -e "--name       \tVM name" >&2
+    echo -e "--switch     \tswitch" >&2
     exit 1
   fi
 
-  sudo $NB_CMD lsp-del "vpc1-"$name
-  sudo ovs-vsctl del-port br-int "veth-"$name
-  sudo ip netns del $name
+  sudo $NB_CMD lsp-del $switch"-"$name 2>&1
+  sudo ovs-vsctl del-port br-int "veth-"$name 2>&1
+  sudo ip netns del $name 2>&1
 }
 
 function help()
