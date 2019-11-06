@@ -354,21 +354,21 @@ function bind-fip()
 
   router="r4"$switch
   fport="from-"$router"-"${vmmac//:/}
-  $NB_CMD create Logical_Router name=$gwrn options:chassis=$($SB_CMD show | grep -B 1 "hostname: $(hostname)" | grep Chassis | awk -F"\"" '{print$2}')
-  
   ip=$(echo $fip | awk -F"/" '{print$1}')
   rmk=$(echo $fip | awk -F"/" '{print$2}')
   pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
   $NB_CMD lrp-add $router $fport  $(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256]) $pip"/"$rmk
+  $NB_CMD create Logical_Router name=$fport options:chassis=$($SB_CMD show | grep -B 1 "hostname: $(hostname)" | grep Chassis | awk -F"\"" '{print$2}')
 
   
   pswn="public-"${vmmac//:/}"-"$(hostname)
+  
   imac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
   $NB_CMD ls-add $pswn
   $NB_CMD lsp-add $pswn "to-"$pswn
   $NB_CMD lsp-set-type "to-"$pswn router
   $NB_CMD lsp-set-addresses "to-"$pswn $imac
-  $NB_CMD lsp-set-options "to-"$pswn router-port="from-"$router"-"${vmmac//:/}
+  $NB_CMD lsp-set-options "to-"$pswn router-port=$fport
   
   
   $NB_CMD lsp-add $pswn $pswn"-localnet"
@@ -379,7 +379,7 @@ function bind-fip()
   ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:br-ex
 
   $NB_CMD lr-nat-add $router dnat_and_snat $ip $vmip
-  #$NB_CMD lr-nat-add $router snat $pip 100.69.0.0/16 
+  $NB_CMD lr-nat-add $router dnat_and_snat $pip $vmip 
   
 }
 
