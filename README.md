@@ -8,17 +8,21 @@ SDN for Kubernetes network
 
 # 1. Features
 
-- VPC
 - vlan
-- static IP
-- floating IP
+- vxlan, gre
+- static IP/floating IP
+- QoS
+- ACL
+- CNI
 
 # 2. Roadmap
 
-- ~all support vlan [1.1.0]~
-- ~~all support floating ip [1.2.0]~~
-- all support acl [1.3.0]
-- all support router [1.4.0]
+- ~~support vlan [1.1.0]~~
+- ~~support floating ip [1.2.0]~~
+- support QoS [1.3.0]
+- support ACL [1.4.0]
+- support vxlan [1.5.0]
+- support CNI [1.6.0]
 
 # Books
 
