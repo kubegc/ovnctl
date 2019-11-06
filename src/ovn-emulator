@@ -346,7 +346,7 @@ function bind-fip()
     cmddesc
     echo -e "--swName  \tswitch name" >&2
     echo -e "--vmmac   \tvm mac" >&2
-    echo -e "--fip     \tflating ip" >&2
+    echo -e "--fip     \tflating ip and mask, for example, 192.168.1.1/24" >&2
     exit 1
   fi
 
@@ -364,6 +364,7 @@ function bind-fip()
   
   pswn="public-"${vmmac//:/}"-"$(hostname)
   imac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  $NB_CMD ls-add $pswn
   $NB_CMD lsp-add $pswn "to-"$pswn
   $NB_CMD lsp-set-type "to-"$pswn router
   $NB_CMD lsp-set-addresses "to-"$pswn $imac
