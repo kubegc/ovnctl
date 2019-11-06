@@ -354,12 +354,12 @@ function bind-fip()
 
   router="r4"$switch
   fport="from-"$router"-"${vmmac//:/}
-  $NB_CMD create Logical_Router name=$gwrn options:chassis=$(ovn-sbctl show | grep -B 1 "hostname: $(hostname)" | grep Chassis | awk -F"\"" '{print$2}')
+  $NB_CMD create Logical_Router name=$gwrn options:chassis=$($SB_CMD show | grep -B 1 "hostname: $(hostname)" | grep Chassis | awk -F"\"" '{print$2}')
   
   ip=$(echo $fip | awk -F"/" '{print$1}')
   rmk=$(echo $fip | awk -F"/" '{print$2}')
   pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
-  ovn-nbctl lrp-add $router $fport  $(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256]) $pip"/"$rmk
+  $NB_CMD lrp-add $router $fport  $(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256]) $pip"/"$rmk
 
   
   pswn="public-"${vmmac//:/}"-"$(hostname)
