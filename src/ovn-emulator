@@ -1,16 +1,18 @@
-###################################################
-###
-###  Copyright (2019, ) Institute of Software
-###           Chinese Academy of Sciences
-###         Author: wuheng@otcaix.iscas.ac.cn
-###
-###
-####################################################
+#! /bin/bash
+###############################################
+##
+##  Copyright (2019, ) Institute of Software
+##      Chinese Academy of Sciences
+##          wuheng@otcaixiscas.ac.cn
+##         wuyuewen@otcaix.iscas.ac.cn
+##              2019-11-4
+##
+###############################################
 
 MASTER=$(cat /etc/ovn-emulator.conf | grep master | awk -F"=" '{print$2}')
 THISIP=$(cat /etc/ovn-emulator.conf | grep thisip | awk -F"=" '{print$2}')
+VERSION="1.2.0"
 IFCFG="/etc/sysconfig/network-scripts/"
-
 
 NB_PORT="6641"
 SB_PORT="6642"
@@ -79,35 +81,22 @@ function stop-worker()
   systemctl disable ovn-controller-vtep
 }
 
-
-###########################################################
-##
-##  L2 bridge
-##
-##########################################################
-
-
-function create-bridge()
+function init-network()
 {
-  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
   nic=$(echo $* | awk -F"--nic" '{print$2}' | awk '{print$1}')
-  vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
-
-  if [[ -z $1 || -z $name || -z $nic || $2 == "--help" ]]
+  
+  if [[ -z $nic ]]
   then
     cmddesc
-    echo -e "--name  \tbridge name" >&2
     echo -e "--nic   \tnic name" >&2
-    echo -e "--vlan  \tvlan id, default is \"vlan=0\"" >&2
     exit 1
   fi
+   
+  create-bridge --name br-ex --nic $nic   
+}
 
-  if [[ -z $vlan ]]
-  then
-    vlan=0
-  fi
-
-  ################################
+function init-netconfig-ifneed()
+{
   if [[ ! -f $IFCFG"ifcfg-BRX" ]]
   then
      echo DEVICE=BRX           >> /etc/sysconfig/network-scripts/ifcfg-BRX
@@ -124,39 +113,15 @@ function create-bridge()
      echo DEVICETYPE=ovs       >> /etc/sysconfig/network-scripts/ifcfg-ORG
      echo OVS_BRIDGE=BRX       >> /etc/sysconfig/network-scripts/ifcfg-ORG
   fi
-  ################################
-  ################################
-  res=$(systemctl status openvswitch | grep Active | awk -F":" '{print $2}' | awk '{print$1}')
-  if [[ $res != "active" ]]
-  then
-    echo "please start openvswitch first" >&2
-    exit 1
-  fi
+}
 
-  if [[ ! -f $IFCFG"ifcfg-$nic" ]]
-  then
-    echo "wrong NIC name" >&2
-    exit 1
-  fi  
+function generate-netconfig()
+{
+  name=$1
+  nic=$2
 
-  ################################
-  ################################
-  
-  if [[ ! -f $IFCFG"ifcfg-$nic.bak" ]]
-  then
-    cp $IFCFG"ifcfg-$nic" $IFCFG"ifcfg-$nic.bak"
-  fi
-
-  rm -rf $IFCFG"ifcfg-$nic"
-  rm -rf $IFCFG"ifcfg-$name"
-
-  mv $IFCFG"ifcfg-ORG" $IFCFG"ifcfg-$nic"
-  mv $IFCFG"ifcfg-BRX" $IFCFG"ifcfg-$name"
-
-  ovs-vsctl --if-exist del-br $name
-  ovs-vsctl add-br $name
-  ovs-vsctl add-br $name"-"$vlan $name $vlan
-  ovs-vsctl set interface $name"-"$vlan type=internal
+  mv -f $IFCFG"ifcfg-ORG" $IFCFG"ifcfg-$nic"
+  mv -f $IFCFG"ifcfg-BRX" $IFCFG"ifcfg-$name"
 
   static=$(cat $IFCFG"ifcfg-$nic.bak" | grep BOOTPROTO | grep static)
   ip=$(cat $IFCFG"ifcfg-$nic.bak" | grep IPADDR)
@@ -178,8 +143,66 @@ function create-bridge()
     echo $gw >> $IFCFG"ifcfg-$name"
     echo $dns >> $IFCFG"ifcfg-$name"
   fi
+}
 
+###########################################################
+##
+##  L2 bridge
+##
+##########################################################
+
+function create-bridge()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  nic=$(echo $* | awk -F"--nic" '{print$2}' | awk '{print$1}')
+  vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $name || -z $nic || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name  \tbridge name" >&2
+    echo -e "--nic   \tnic name" >&2
+    echo -e "--vlan  \tvlan id, default is \"vlan=0\"" >&2
+    exit 1
+  fi
+  
+  ## check
+  res=$(systemctl status openvswitch | grep Active | awk -F":" '{print $2}' | awk '{print$1}')
+  if [[ $res != "active" ]]
+  then
+    echo "please start openvswitch first" >&2
+    exit 1
+  fi
+
+  if [[ ! -f $IFCFG"ifcfg-$nic" ]]
+  then
+    echo "wrong NIC name" >&2
+    exit 1
+  fi  
+  
+  if [[ ! -f $IFCFG"ifcfg-$nic.bak" ]]
+  then
+    cp $IFCFG"ifcfg-$nic" $IFCFG"ifcfg-$nic.bak"
+  fi
+  
+  ## init
+  init-netconfig-ifneed
+  
+  ## generate
+  generate-netconfig $name $nic
+
+  ## create and config
+  if [[ -z $vlan ]]
+  then
+    vlan=0
+  fi
+  
+  ovs-vsctl --if-exist del-br $name
+  ovs-vsctl add-br $name
+  ovs-vsctl add-br $name"-"$vlan $name $vlan
+  ovs-vsctl set interface $name"-"$vlan type=internal
   ovs-vsctl add-port $name $nic && ifdown $nic && ifup $nic && ifup $name
+  
   ip link set dev $nic promisc on
   ip link set dev $name promisc on
 }
@@ -197,7 +220,7 @@ function delete-bridge()
     exit 1
   fi
 
-  ################################
+  ## check
   res=$(systemctl status openvswitch | grep Active | awk -F":" '{print $2}' | awk '{print$1}')
   if [[ $res != "active" ]]
   then
@@ -211,20 +234,18 @@ function delete-bridge()
     exit 1
   fi
 
-  ################################
-
-  rm -rf $IFCFG"ifcfg-$name"
-
+  ## revert
   if [[ ! -f $IFCFG"ifcfg-$nic.bak" ]]
   then
     echo "$nic is not a part of openvswitch" >&2
     exit 1
-  fi 
-  rm -rf $IFCFG"ifcfg-$nic"
+  fi
 
- 
+  rm -rf $IFCFG"ifcfg-$name" 
+  rm -rf $IFCFG"ifcfg-$nic"
   mv -f $IFCFG"ifcfg-$nic.bak" $IFCFG"ifcfg-$nic"
 
+  ## delete
   ovs-vsctl --if-exist del-br $name && ifdown $nic && ifup $nic
 
 }
@@ -378,6 +399,7 @@ function bind-fip()
  
   if [[ -z $1 || -z $switch || -z $vmmac || -z $fip || $2 == "--help" ]]
   then
+    cmddesc
     echo -e "--swName  \tswitch name" >&2
     echo -e "--vmmac   \tvm mac" >&2
     echo -e "--fip     \tflating ip" >&2
@@ -441,7 +463,12 @@ function delete-switch()
 }
 
 
-### vm 
+###########################################################
+##
+##  Simulate VM
+##
+########################################################## 
+
 function create-vm()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
@@ -453,6 +480,7 @@ function create-vm()
 
   if [[ -z $1 || -z $name || -z $nic || -z $mac || -z gway || -z $ip || $2 == "--help" ]]
   then
+    cmddesc
     echo -e "--name       \tVM name" >&2
     echo -e "--switch     \tSee kubeovn create-switch" >&2
     echo -e "--nic        \tNIC"  >&2
@@ -478,6 +506,12 @@ function create-vm()
   sudo ip netns exec $name ip route add default via $gway
 }
 
+function cmddesc()
+{
+  echo -e "Welcome to ovnctl, the ovn plugin for Kubernetes."
+  echo -e "ovnctl($VERSION): missing command name (use --help for help)\n"
+}
+
 function delete-vm()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
@@ -485,6 +519,7 @@ function delete-vm()
  
   if [[ -z $1 || -z $name || -z $switch || $2 == "--help" ]]
   then
+    cmddesc
     echo -e "--name       \tVM name" >&2
     echo -e "--switch     \tswitch" >&2
     exit 1
@@ -495,6 +530,18 @@ function delete-vm()
   sudo ip netns del $name 2>&1
 }
 
+###########################################################
+##
+##  Info
+##
+##########################################################
+
+function cmddesc()
+{
+  echo -e "Welcome to ovn-emulator, you can build your expected network enviroments."
+  echo -e "ovn-emulator($VERSION): missing command name (use --help for help)\n"
+}
+
 function help()
 {
   echo -e "Commands:"
@@ -502,6 +549,7 @@ function help()
   echo -e "  stop-central   :\t(Init): stop  central node"
   echo -e "  start-worker   :\t(Init): start worker  node"
   echo -e "  stop-worker    :\t(Init): stop  worker  node"
+  echo -e "  init-network   :\t(Init): create br-ex"
   echo -e "  create-bridge  :\t(L2  ): create L2 bridge"
   echo -e "  delete-bridge  :\t(L2  ): delete L2 bridge"
   echo -e "  create-switch  :\t(L3  ): create L3 switch and gateway"
@@ -524,6 +572,9 @@ case $1 in
     ;;
   "stop-worker")
     stop-worker $*
+    ;;
+  "init-network")
+    init-network $*
     ;;
   "create-bridge")
     create-bridge $*
