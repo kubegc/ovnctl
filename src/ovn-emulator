@@ -515,6 +515,7 @@ function unbind-fip()
 ##
 ##########################################################
 
+# [--may-exist] acl-add entity direction priority match verdict
 function create-acl()
 {
   do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
@@ -592,13 +593,13 @@ function create-acl()
   $(cmd)
 }
 
-
 function modify-acl()
 {
   delete-acl $*
   create-acl $*
 }
 
+# [--type={switch | port-group}] acl-del entity [direction [priority match]]
 function delete-acl()
 {
   do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
@@ -662,6 +663,132 @@ function delete-acl()
   $(cmd)
 }
 
+###########################################################
+##
+##  QoS
+##
+##########################################################
+
+# [--may-exist] qos-add switch direction priority match [dscp=dscp] [rate=rate [burst=burst]]
+function create-qos()
+{
+  do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
+  sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  vm=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
+  tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
+  po=$(echo $* | awk -F"--protocol" '{print$2}' | awk '{print$1}')
+  rt=$(echo $* | awk -F"--rate" '{print$2}' | awk '{print$1}')
+  bu=$(echo $* | awk -F"--burst" '{print$2}' | awk '{print$1}')
+  pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $sw || -z $vm || -z $tp || -z $po || -z $rt || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--domain     \tdomain" >&2
+    echo -e "--swName     \tswitch" >&2
+    echo -e "--vmmac      \tmac" >&2
+    echo -e "--type       \ttype, from or to"  >&2
+    echo -e "--protocol   \tprotocol, IP, tcp"  >&2
+    echo -e "--rate       \trate, kbps"  >&2
+	echo -e "--burst      \toptional, burst, kbps"  >&2
+    echo -e "--priority   \toptional, 1-32767"  >&2
+    exit 1
+  fi
+  
+  ## check 
+  sid=$($NB_CMD ls-list | grep "($sw)" | awk '{print$1}')
+  if [[ -z $sid ]]
+  then
+    echo "switch not exist" >&2
+    exit 1
+  fi
+  
+  ftport=""
+  if [[ $tp == "from" ]]
+  then
+    ftport="from-lport"
+  elif [[ $tp == "to" ]]
+  then
+    ftport="to-lport"
+  else
+    echo "wrong type, must be neither 'from' or 'to'" >&2
+    exit 1
+  fi
+  
+  if [[ -z $pr ]]
+  then
+    pr="100"
+  fi
+      
+  name="public-"${vmmac//:/}"-"$(hostname)
+  cmd=""
+  if [[ -z $bu ]]
+  then  
+    cmd="$NB_CMD qos-add "$name" "$ftport" "$pr" "$po" rate="$rt
+  else
+    cmd="$NB_CMD qos-add "$name" "$ftport" "$pr" "$po" rate="$rt" burst="$bu
+  fi
+  $(cmd)
+}
+
+# qos-del switch [direction [priority match]]
+function modify-qos()
+{
+  delete-qos $*
+  create-qos $*
+}
+
+# qos-del switch [direction [priority match]]
+function delete-qos()
+{
+  do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
+  sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  vm=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
+  tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
+  po=$(echo $* | awk -F"--protocol" '{print$2}' | awk '{print$1}')
+  pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $sw || -z $vm || -z $tp || -z $po || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--domain     \tdomain" >&2
+    echo -e "--swName     \tswitch" >&2
+    echo -e "--vmmac      \tmac" >&2
+    echo -e "--type       \ttype, from or to"  >&2
+    echo -e "--protocol   \tprotocol, IP, tcp"  >&2
+    echo -e "--priority   \toptional, 1-32767"  >&2
+    exit 1
+  fi
+  
+  ## check 
+  sid=$($NB_CMD ls-list | grep "($sw)" | awk '{print$1}')
+  if [[ -z $sid ]]
+  then
+    echo "switch not exist" >&2
+    exit 1
+  fi
+  
+  ftport=""
+  if [[ $tp == "from" ]]
+  then
+    ftport="from-lport"
+  elif [[ $tp == "to" ]]
+  then
+    ftport="to-lport"
+  else
+    echo "wrong type, must be neither 'from' or 'to'" >&2
+    exit 1
+  fi
+  
+  if [[ -z $pr ]]
+  then
+    pr="100"
+  fi
+      
+  name="public-"${vmmac//:/}"-"$(hostname)
+  cmd="$NB_CMD qos-del "$name" "$ftport" "$pr" "$po
+  $(cmd)
+}
 
 
 ###########################################################
@@ -707,11 +834,6 @@ function create-vm()
   sudo ip netns exec $name ip route add default via $gway
 }
 
-function cmddesc()
-{
-  echo -e "Welcome to ovnctl, the ovn plugin for Kubernetes."
-  echo -e "ovnctl($VERSION): missing command name (use --help for help)\n"
-}
 
 function delete-vm()
 {
@@ -758,9 +880,12 @@ function help()
   echo -e "  delete-switch  :\t(L3  ): delete L3 switch and gateway"
   echo -e "  bind-fip       :\t(L3  ): bind floating IP"
   echo -e "  unbind-fip     :\t(L3  ): unbind floating IP"
-  echo -e "  create-acl     :\t(ACL ): create access control list"
-  echo -e "  modify-acl     :\t(ACL ): modify access control list"
-  echo -e "  delete-acl     :\t(ACL ): delete access control list"
+  echo -e "  create-acl     :\t(ACL ): create access control list for [Virtual] OS enviroments"
+  echo -e "  modify-acl     :\t(ACL ): modify access control list for [Virtual] OS enviroments"
+  echo -e "  delete-acl     :\t(ACL ): delete access control list for [Virtual] OS enviroments"
+  echo -e "  create-qos     :\t(QoS ): create QoS for floating IP"
+  echo -e "  modify-qos     :\t(QoS ): modify QoS for floating IP"
+  echo -e "  delete-qos     :\t(QoS ): delete QoS for floating IP"
   echo -e "  create-vm      :\t(Simu): create a VM"
   echo -e "  delete-vm      :\t(Simu): delete a VM"
 }
@@ -809,6 +934,15 @@ case $1 in
     modify-acl $*
     ;;
   "delete-acl")
+    delete-acl $*
+    ;;
+  "create-qos")
+    create-qos $*
+    ;;
+  "modify-qos")
+    modify-acl $*
+    ;;
+  "delete-qos")
     delete-acl $*
     ;;
   "create-vm")
