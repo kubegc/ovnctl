@@ -10,7 +10,8 @@ SDN for Kubernetes network
 
 - **IPv4**/IPv6
 - **vlan**, vxlan, **geneve**
-- **static IP/floating IP**
+- **fixed IP/floating IP**
+- **static IP/dynamic IP**
 - **ACL**
 - QoS
 - CNI
