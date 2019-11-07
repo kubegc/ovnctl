@@ -586,7 +586,7 @@ function create-acl()
   then
     rule="\""$ioport" == "$rl"\""
   else
-    rule="\""$ioport" == \""$port"\" && "$rl"\""
+    rule="\""$ioport" == \\\""$port"\\\" && "$rl"\""
   fi
   
   cmd="$NB_CMD acl-add "$sw" "$ftport" "$pr" "$rule" "$operator
@@ -663,13 +663,13 @@ function delete-acl()
   
   
   port=$(NB_CMD show | grep -B 1 "$vm" | grep port | awk '{print$2}')
-  rule="";
+  rule=""
   
   if [[ -z $port ]]
   then
     rule="\""$ioport" == "$rl"\""
   else
-    rule="\""$ioport" == \""$port"\" && "$rl"\""
+    rule="\""$ioport" == \\\""$port"\\\" && "$rl"\""
   fi
   
   cmd="$NB_CMD acl-del "$sw" "$ftport" "$pr" "$rule" "$operator
