@@ -397,9 +397,13 @@ function unbind-fip()
     exit 1
   fi
 
-  $NB_CMD ls-del "public-"$switch
+  pswn="public-"${vmmac//:/}"-"$(hostname)
+  $NB_CMD ls-del $pswn
 
-  $NB_CMD lr-nat-del "r4"$switch dnat_and_snat $fip
+  router="r4"$switch
+  pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
+  $NB_CMD lr-nat-del $router dnat_and_snat $fip
+  $NB_CMD lr-nat-del $router dnat_and_snat $pip
 }
 
 function delete-switch()
