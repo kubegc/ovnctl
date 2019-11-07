@@ -19,8 +19,8 @@ SDN for Kubernetes network
 
 - ~~support vlan [1.1.0]~~
 - ~~support floating ip [1.2.0]~~
-- support QoS [1.3.0]
-- support ACL [1.4.0]
+- support ACL [1.3.0]
+- support QoS [1.4.0]
 - support vxlan [1.5.0]
 - support CNI [1.6.0]
 
@@ -47,34 +47,4 @@ SDN for Kubernetes network
 
 - ACLS:
   - http://blog.spinhirne.com/2016/10/ovn-and-acls.html
-# 5. Some commands
 
-```
-ip netns add net1
-ip link
-ip link set mac1@br-native netns net1
-ip link set mac1 netns net1
-ip netns exec net1 ip link
-ip netns exec net1 ip link set mac1 name eth0
-ip netns exec net1 ip link
-ip netns exec net1 ip addr add 133.133.134.178/16 dev eth0
-ip netns exec net1 ip link set eth0 up
-
-ovn-nbctl -- --id=@nat create nat type="dnat_and_snat" logical_ip=192.168.4.7 external_ip=133.133.134.178 -- add logical_router r4ls1 nat @nat
-ovn-nbctl lrp-set-gateway-chassis rp4ls1 d9ff5bef-2db0-4867-a00c-7459cbb4c772(ovn-sbctl)
-```
-
-
-```
-iptables -t nat -L -n --line-numbers
-iptables -t nat -A POSTROUTING  -s 192.168.5.10/32 -j SNAT --to-source 133.133.134.189
-iptables -t nat -A PREROUTING  -d 133.133.134.189/32 -j DNAT --to-destination 192.168.5.10
-
-iptables -t nat  -D PREROUTING  [num]
-iptables -t nat  -D POSTROUTING [num]
-```
-
-```
-iptables -t nat -A POSTROUTING -s 192.168.5.10/32 -o br-native:1 -j SNAT --to-source 133.133.134.189
-route add -net 192.168.5.10 netmask 255.255.255.255 dev br-native:1
-```
