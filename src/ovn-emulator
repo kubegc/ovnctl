@@ -831,7 +831,7 @@ function create-vm()
   ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
   gway=$(echo $* | awk -F"--gateway" '{print$2}' | awk '{print$1}')
 
-  if [[ -z $1 || -z $name || -z $nic || -z $mac || -z $gway || -z $ip || $2 == "--help" ]]
+  if [[ -z $1 || -z $name || -z $nic || -z $mac || -z $ip || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name       \tVM name" >&2
@@ -839,8 +839,15 @@ function create-vm()
     echo -e "--nic        \tNIC"  >&2
     echo -e "--mac        \tMac"  >&2
     echo -e "--ip         \tIP"  >&2
-    echo -e "--gateway    \tGateway"  >&2
+    echo -e "--gateway    \tOptinal, Gateway"  >&2
     exit 1
+  fi
+
+  delete-vm $*
+
+  if [[ -z $gway ]]
+  then
+    gway=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".1"
   fi
 
   sudo ip netns add $name
