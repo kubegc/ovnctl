@@ -589,8 +589,77 @@ function create-acl()
   fi
   
   cmd="$NB_CMD acl-add "$sw" "$ftport" "$pr" "$rule" "$operator
-  echo $cmd
-  #$(cmd)
+  $(cmd)
+}
+
+
+function modify-acl()
+{
+  delete-acl $*
+  create-acl $*
+}
+
+function delete-acl()
+{
+  do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
+  sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  vm=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
+  tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
+  rl=$(echo $* | awk -F"--rule" '{print$2}' | awk '{print$1}')
+  pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $sw || -z $vm || -z $tp || -z $rl || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--domain     \tdomain" >&2
+    echo -e "--swName     \tswitch" >&2
+    echo -e "--vmmac      \tmac" >&2
+    echo -e "--type       \toptional, type, from or to"  >&2
+    echo -e "--rule       \toptional, rule, tcp.dest=1"  >&2
+    echo -e "--priority   \toptional, 1-1000"  >&2
+    exit 1
+  fi
+  
+  ## check 
+  sid=$($NB_CMD ls-list | grep "($sw)" | awk '{print$1}')
+  if [[ -z $sid ]]
+  then
+    echo "switch not exist" >&2
+    exit 1
+  fi
+  
+  ftport=""
+  ioport=""
+  if [[ $tp == "from" ]]
+  then
+    ftport="from-lport"
+    ioport="inport"
+  elif [[ $tp == "to" ]]
+  then
+    ftport="to-lport"
+    ioport="outport"
+  else
+    echo "wrong type, must be neither 'from' or 'to'" >&2
+    exit 1
+  fi
+  
+  if [[ -z $pr ]]
+  then
+    pr="100"
+  fi
+    
+  port=$($NB_CMD show | grep -B 1 "$vm" | grep port | awk '{print$2}')
+  rule=""
+  
+  if [[ -z $port ]]
+  then
+    rule="\""$ioport" == "$rl"\""
+  else
+    rule="\""$ioport" == \\\""$port"\\\" && "$rl"\""
+  fi
+  
+  cmd="$NB_CMD acl-del "$sw" "$ftport" "$pr" "$rule
+  $(cmd)
 }
 
 
