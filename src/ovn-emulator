@@ -850,7 +850,7 @@ function create-vm()
 
   if [[ -z $gway ]]
   then
-    gway=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".1"
+    gway=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".1"
   fi
 
   sudo ip netns add $name
