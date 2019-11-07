@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 ###############################################
 ##
 ##  Copyright (2019, ) Institute of Software
@@ -8,6 +8,8 @@
 ##              2019-11-4
 ##
 ###############################################
+
+export LD_LIBRARY_PATH="/usr/lib64"
 
 MASTER=$(cat /etc/ovn-emulator.conf | grep master | awk -F"=" '{print$2}')
 THISIP=$(cat /etc/ovn-emulator.conf | grep thisip | awk -F"=" '{print$2}')
@@ -43,7 +45,6 @@ function start-central()
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
   #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
   sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
-
 }
 
 function stop-central()
@@ -613,14 +614,12 @@ function create-acl()
   
   if [[ -z $port ]]
   then
-    rule="\""$ioport" == "$rl"\""
+    rule=$ioport" == "$rl
   else
-    rule="\""$ioport" == \\\""$port"\\\" && "$rl"\""
+    rule=$ioport" == \"$port\" && "$rl
   fi
   
-  cmd="$NB_CMD acl-add "$sw" "$ftport" "$pr" "$rule" "$operator
-  
-  echo $cmd
+  $NB_CMD acl-add $sw $ftport $pr "$rule" $operator
 }
 
 function modify-acl()
@@ -685,13 +684,12 @@ function delete-acl()
   
   if [[ -z $port ]]
   then
-    rule="\""$ioport" == "$rl"\""
+    rule=$ioport" == "$rl
   else
-    rule="\""$ioport" == \\\""$port"\\\" && "$rl"\""
+    rule=$ioport" == \"$port\" && "$rl
   fi
-  
-  cmd="$NB_CMD acl-del "$sw" "$ftport" "$pr" "$rule
-  echo $cmd
+ 
+  $NB_CMD acl-del $sw $ftport $pr "$rule"
 }
 
 ###########################################################
