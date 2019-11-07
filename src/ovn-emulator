@@ -540,9 +540,9 @@ function create-acl()
   
   ## check 
   sid=$($NB_CMD ls-list | grep "($sw)" | awk '{print$1}')
-  if [[ -n $sid ]]
+  if [[ -z $sid ]]
   then
-    echo "cannot connect the master or the switch name exists" >&2
+    echo "switch not exist" >&2
     exit 1
   fi
   
@@ -578,7 +578,7 @@ function create-acl()
     pr="100"
   fi
     
-  port=$(NB_CMD show | grep -B 1 "$vm" | grep port | awk '{print$2}')
+  port=$($NB_CMD show | grep -B 1 "$vm" | grep port | awk '{print$2}')
   rule=""
   
   if [[ -z $port ]]
@@ -590,7 +590,7 @@ function create-acl()
   
   cmd="$NB_CMD acl-add "$sw" "$ftport" "$pr" "$rule" "$operator
   echo $cmd
-  $(cmd)
+  #$(cmd)
 }
 
 
