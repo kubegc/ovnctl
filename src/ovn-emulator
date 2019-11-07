@@ -120,6 +120,11 @@ function generate-netconfig()
   name=$1
   nic=$2
 
+  if [[ ! -f $IFCFG"ifcfg-$nic.bak" ]]
+  then
+    cp $IFCFG"ifcfg-$nic" $IFCFG"ifcfg-$nic.bak"
+  fi
+
   mv -f $IFCFG"ifcfg-ORG" $IFCFG"ifcfg-$nic"
   mv -f $IFCFG"ifcfg-BRX" $IFCFG"ifcfg-$name"
 
@@ -133,6 +138,8 @@ function generate-netconfig()
   sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$name"
   sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$nic"
   sed -i "s/ORG/$nic/g" $IFCFG"ifcfg-$nic"
+  
+  
   if [[ -z $static ]]
   then
     echo "BOOTPROTO=dhcp" >> $IFCFG"ifcfg-$name"
@@ -151,6 +158,48 @@ function generate-netconfig()
 ##
 ##########################################################
 
+
+function checkOVSStatus()
+{
+  res=$(systemctl status openvswitch | grep Active | awk -F":" '{print $2}' | awk '{print$1}')
+  if [[ $res != "active" ]]
+  then
+    echo "please start openvswitch first" >&2
+    exit 1
+  fi
+}
+
+function checkNICConfig()
+{
+  nic=$1
+  if [[ ! -f $IFCFG"ifcfg-$nic" ]]
+  then
+    echo "wrong NIC name" >&2
+    exit 1
+  fi  
+}
+
+function checkDuplicate()
+{
+  name=$1
+  sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
+  if [[ -n $sid ]]
+  then
+    echo "cannot connect the master or the switch name exists" >&2
+    exit 1
+  fi
+}
+
+function checkDHCP()
+{
+  dhcpid=$1
+  if [[ -z $dhcpid ]]
+  then 
+    echo -e "invalid switch name"  >&2
+	exit 1
+  fi
+}
+
 function create-bridge()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
@@ -167,23 +216,8 @@ function create-bridge()
   fi
   
   ## check
-  res=$(systemctl status openvswitch | grep Active | awk -F":" '{print $2}' | awk '{print$1}')
-  if [[ $res != "active" ]]
-  then
-    echo "please start openvswitch first" >&2
-    exit 1
-  fi
-
-  if [[ ! -f $IFCFG"ifcfg-$nic" ]]
-  then
-    echo "wrong NIC name" >&2
-    exit 1
-  fi  
-  
-  if [[ ! -f $IFCFG"ifcfg-$nic.bak" ]]
-  then
-    cp $IFCFG"ifcfg-$nic" $IFCFG"ifcfg-$nic.bak"
-  fi
+  checkOVSStatus
+  checkNICConfig
   
   ## init
   init-netconfig-ifneed
@@ -192,6 +226,7 @@ function create-bridge()
   generate-netconfig $name $nic
 
   ## create and config
+  
   if [[ -z $vlan ]]
   then
     vlan=0
@@ -221,31 +256,21 @@ function delete-bridge()
   fi
 
   ## check
-  res=$(systemctl status openvswitch | grep Active | awk -F":" '{print $2}' | awk '{print$1}')
-  if [[ $res != "active" ]]
-  then
-    echo "please start openvswitch first" >&2
-    exit 1
-  fi
-
-  if [[ ! -f $IFCFG"ifcfg-$nic" ]]
-  then
-    echo "wrong NIC name" >&2
-    exit 1
-  fi
-
-  ## revert
+  
+  checkOVSStatus
+  checkNICConfig
+  
   if [[ ! -f $IFCFG"ifcfg-$nic.bak" ]]
   then
     echo "$nic is not a part of openvswitch" >&2
     exit 1
   fi
 
+  ## revert and delete
   rm -rf $IFCFG"ifcfg-$name" 
   rm -rf $IFCFG"ifcfg-$nic"
   mv -f $IFCFG"ifcfg-$nic.bak" $IFCFG"ifcfg-$nic"
 
-  ## delete
   ovs-vsctl --if-exist del-br $name && ifdown $nic && ifup $nic
 
 }
@@ -278,12 +303,9 @@ function create-switch()
   fi
 
   ## check 
-  sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
-  if [[ -n $sid ]]
-  then
-    echo "cannot connect the master or the switch name exists" >&2
-    exit 1
-  fi
+  
+  checkOVSStatus
+  checkDuplicate $name
  
   ## create and config
   $NB_CMD ls-add $name
@@ -300,8 +322,8 @@ function create-switch()
     rip=$gway
   fi
    
-  router='r4'$name
-  rport='rp4'$name
+  router=$name"-router"
+  rport=$name"-router-port"
   rmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
   rmk=$(echo $subn | awk -F"/" '{print$2}')
   
@@ -310,7 +332,7 @@ function create-switch()
   
   
   
-  sport='sp4'$name
+  sport='to-'$rport
   $NB_CMD lsp-add $name $sport
   $NB_CMD lsp-set-type $sport router
   $NB_CMD lsp-set-addresses $sport $rmac
@@ -353,14 +375,13 @@ function modify-switch()
     exit 1
   fi
   
+  ## check
   dhcpid=$($NB_CMD show $name | grep "dhcpv4id-$name-" | awk -F "dhcpv4id-$name-" '{print$2}') 
+  checkOVSStatus
+  checkDHCP $dhcpid
   
-  if [[ -z $dhcpid ]]
-  then 
-    echo -e "invalid switch name"  >&2
-	exit 1
-  fi
- 
+  
+  ## read
   thisdhcp=$($NB_CMD dhcp-options-get-options $dhcpid | grep "server_id" | awk -F"=" '{print$2}')
   thisgway=$($NB_CMD dhcp-options-get-options $dhcpid | grep "router" | awk -F"=" '{print$2}')
   rmac=$($NB_CMD dhcp-options-get-options $dhcpid | grep "server_mac" | awk -F"=" '{print$2}')
@@ -386,7 +407,8 @@ function modify-switch()
   then
     thisdns=$dnss
   fi
-
+  
+  # update
   cmd="$dhcpid server_mac=$rmac lease_time=3600 mtu=$thismtu"
   if [[ -n $thisdhcp ]]
   then
@@ -402,7 +424,8 @@ function modify-switch()
   then
     cmd=$cmd" dns_server=$thisdns"
   fi
-
+   
+  # execute
   $($NB_CMD dhcp-options-set-options $cmd)
 
 }
@@ -419,6 +442,8 @@ function delete-switch()
   fi
 
   ## check
+  checkOVSStatus
+  
   sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
   if [[ -z $sid ]]
   then
@@ -427,7 +452,7 @@ function delete-switch()
   fi
   
   ## delete
-  router='r4'$name
+  router=$name"-router"
   dhcpid=$($NB_CMD show $name | grep "dhcpv4id-$name-" | awk -F"dhcpv4id-$name-" '{print$2}')
   $NB_CMD ls-del $name  >/dev/null  2>&1 
   $NB_CMD lr-del $router >/dev/null  2>&1
