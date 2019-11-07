@@ -287,7 +287,6 @@ function create-switch()
  
   ## create and config
   $NB_CMD ls-add $name
-  $NB_CMD set Logical_Switch $name other_config:subnet=$subn
 
   if [[ -n $excl ]]
   then
