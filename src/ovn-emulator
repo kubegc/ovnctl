@@ -358,7 +358,7 @@ function bind-fip()
   imac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
   
   $NB_CMD lrp-add $router $fport  $imac $pip"/"$rmk
-  $NB_CMD lrp-set-gateway-chassis $fport options:chassis=$($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
+  $NB_CMD lrp-set-gateway-chassis $fport $($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
 
   
   pswn="public-"${vmmac//:/}"-"$(hostname)
@@ -401,6 +401,8 @@ function unbind-fip()
   $NB_CMD ls-del $pswn
 
   router="r4"$switch
+  fport="from-"$router"-"${vmmac//:/}
+  $NB_CMD lsp-del $fport
   pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
   $NB_CMD lr-nat-del $router dnat_and_snat $fip
   $NB_CMD lr-nat-del $router dnat_and_snat $pip
