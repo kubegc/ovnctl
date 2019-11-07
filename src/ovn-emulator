@@ -580,7 +580,7 @@ function create-acl()
   
   
   port=$(NB_CMD show | grep -B 1 "$vm" | grep port | awk '{print$2}')
-  rule="";
+  rule=""
   
   if [[ -z $port ]]
   then
