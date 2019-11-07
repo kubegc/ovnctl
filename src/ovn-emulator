@@ -393,7 +393,7 @@ function unbind-fip()
   if [[ -z $1 || -z $switch || -z $vmmac || -z $fip ||  $2 == "--help" ]]
   then
     cmddesc
-    echo -e "--switch  \tswitch name" >&2
+    echo -e "--swName  \tswitch name" >&2
     echo -e "--vmmac   \tvm mac" >&2
     echo -e "--fip     \tfip" >&2
     exit 1
@@ -404,7 +404,7 @@ function unbind-fip()
 
   router="r4"$switch
   fport="from-"$router"-"${vmmac//:/}
-  $NB_CMD lsp-del $fport
+  $NB_CMD lrp-del $fport
   pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
   $NB_CMD lr-nat-del $router dnat_and_snat $fip
   $NB_CMD lr-nat-del $router dnat_and_snat $pip
