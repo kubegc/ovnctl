@@ -608,17 +608,14 @@ function create-acl()
   fi
     
   port=$($NB_CMD show | grep -B 1 "$vm" | grep port | awk '{print$2}')
-  rule=""
   
   if [[ -z $port ]]
   then
-    rule="\""$ioport" == "$rl"\""
+    $($NB_CMD acl-add $sw $ftport $pr \"$ioport == $1\" $operator)
   else
-    rule="\""$ioport" == \\\""$port"\\\" && "$rl"\""
+    $($NB_CMD acl-add $sw $ftport $pr \"$ioport == \\\"$port\\\" && $1\" $operator)
   fi
   
-  cmd="$NB_CMD acl-add "$sw" "$ftport" "$pr" "$rule" "$operator
-  $(cmd)
 }
 
 function modify-acl()
@@ -678,17 +675,13 @@ function delete-acl()
   fi
     
   port=$($NB_CMD show | grep -B 1 "$vm" | grep port | awk '{print$2}')
-  rule=""
   
   if [[ -z $port ]]
   then
-    rule="\""$ioport" == "$rl"\""
+    $($NB_CMD acl-add $sw $ftport $pr \"$ioport == $1\")
   else
-    rule="\""$ioport" == \\\""$port"\\\" && "$rl"\""
+    $($NB_CMD acl-add $sw $ftport $pr \"$ioport == \\\"$port\\\" && $1\")
   fi
-  
-  cmd="$NB_CMD acl-del "$sw" "$ftport" "$pr" "$rule
-  $(cmd)
 }
 
 ###########################################################
@@ -757,6 +750,7 @@ function create-qos()
     cmd="$NB_CMD qos-add "$name" "$ftport" "$pr" "$po" rate="$rt" burst="$bu
   fi
   $(cmd)
+  
 }
 
 # qos-del switch [direction [priority match]]
