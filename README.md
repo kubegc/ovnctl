@@ -8,11 +8,11 @@ SDN for Kubernetes network
 
 # 1. Features
 
-- vlan
-- vxlan, gre
-- static IP/floating IP
+- **IPv4**/IPv6
+- **vlan**, vxlan, **geneve**
+- **static IP/floating IP**
+- **ACL**
 - QoS
-- ACL
 - CNI
 
 # 2. Roadmap
