@@ -479,7 +479,7 @@ function bind-fip()
   vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
 
   router=$switch"-router"
-  fport=$router"-"${vmmac//:/}"-port"
+  fport="public-"${vmmac//:/}"-port"
   ip=$(echo $fip | awk -F"/" '{print$1}')
   rmk=$(echo $fip | awk -F"/" '{print$2}')
   pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
@@ -491,10 +491,10 @@ function bind-fip()
   pswn="public-"${vmmac//:/}"-"$(hostname)
   
   $NB_CMD ls-add $pswn
-  $NB_CMD lsp-add $pswn "to-"$pswn
-  $NB_CMD lsp-set-type "to-"$pswn router
-  $NB_CMD lsp-set-addresses "to-"$pswn $imac
-  $NB_CMD lsp-set-options "to-"$pswn router-port=$fport
+  $NB_CMD lsp-add $pswn "from-"$fport
+  $NB_CMD lsp-set-type "from-"$fport router
+  $NB_CMD lsp-set-addresses "from-"$fport $imac
+  $NB_CMD lsp-set-options "from-"$fport router-port=$fport
   
   
   $NB_CMD lsp-add $pswn $pswn"-localnet"
@@ -530,7 +530,7 @@ function unbind-fip()
   $NB_CMD ls-del $pswn
 
   router=$switch"-router"
-  fport=$router"-"${vmmac//:/}"-port"
+  fport="public-"${vmmac//:/}"-port"
   $NB_CMD lrp-del $fport
   pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
   $NB_CMD lr-nat-del $router dnat_and_snat $fip
@@ -883,9 +883,9 @@ function delete-vm()
     exit 1
   fi
 
-  sudo $NB_CMD lsp-del $switch"-"$name 2>&1
-  sudo ovs-vsctl del-port br-int "veth-"$name 2>&1
-  sudo ip netns del $name 2>&1
+  sudo $NB_CMD lsp-del $switch"-"$name >/dev/null  2>&1 
+  sudo ovs-vsctl del-port br-int "veth-"$name >/dev/null  2>&1 
+  sudo ip netns del $name >/dev/null  2>&1 
 }
 
 ###########################################################
