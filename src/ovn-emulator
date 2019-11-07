@@ -617,7 +617,8 @@ function create-acl()
     rule="\""$ioport" == \\\""$port"\\\" && "$rl"\""
   fi
   
-  $($NB_CMD" acl-add "$sw" "$ftport" "$pr" "$rule" "$operator)
+  cmd="$NB_CMD acl-add "$sw" "$ftport" "$pr" "$rule" "$operator
+  $(cmd)
 }
 
 function modify-acl()
@@ -686,7 +687,8 @@ function delete-acl()
     rule="\""$ioport" == \\\""$port"\\\" && "$rl"\""
   fi
   
-  $($NB_CMD" acl-del "$sw" "$ftport" "$pr" "$rule)
+  cmd="$NB_CMD acl-del "$sw" "$ftport" "$pr" "$rule
+  $(cmd)
 }
 
 ###########################################################
