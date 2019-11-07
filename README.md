@@ -9,11 +9,11 @@ SDN for Kubernetes network
 # 1. Features
 
 - **IPv4**/IPv6
-- **vlan**, vxlan, **geneve**
+- **vlan**, **geneve**, vxlan, 
 - **fixed IP/floating IP**
 - **static IP/dynamic IP**
 - **ACL**
-- QoS
+- **QoS**
 - CNI
 
 # 2. Roadmap
@@ -22,7 +22,7 @@ SDN for Kubernetes network
   - ~~support vlan [1.1.0]~~
   - ~~support floating ip [1.2.0]~~
   - ~~upport ACL [1.3.0]~~
-  - support QoS [1.4.0]
+  - ~~support QoS [1.4.0]~~
   - production ready [1.5.0]
 - Support vxlan [2.x]
 - Support CNI [3.x]
