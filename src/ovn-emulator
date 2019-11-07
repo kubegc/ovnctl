@@ -465,7 +465,7 @@ function bind-fip()
   vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
  
-  if [[ -z $1 || -z $switch || -z $vmmac || -z $fip || $2 == "--help" ]]
+  if [[ -z $1 || -z $switch || -z $vmmac || -z $fip || -z $(echo $fip | grep "/") || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--swName  \tswitch name" >&2
@@ -474,10 +474,12 @@ function bind-fip()
     exit 1
   fi
 
+  checkOVSStatus
+
   vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
 
-  router="r4"$switch
-  fport="from-"$router"-"${vmmac//:/}
+  router=$switch"-router"
+  fport=$router"-"${vmmac//:/}"-port"
   ip=$(echo $fip | awk -F"/" '{print$1}')
   rmk=$(echo $fip | awk -F"/" '{print$2}')
   pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
@@ -486,7 +488,6 @@ function bind-fip()
   $NB_CMD lrp-add $router $fport  $imac $pip"/"$rmk
   $NB_CMD lrp-set-gateway-chassis $fport $($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
 
-  
   pswn="public-"${vmmac//:/}"-"$(hostname)
   
   $NB_CMD ls-add $pswn
@@ -514,7 +515,7 @@ function unbind-fip()
   vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
 
-  if [[ -z $1 || -z $switch || -z $vmmac || -z $fip ||  $2 == "--help" ]]
+  if [[ -z $1 || -z $switch || -z $vmmac || -z $fip || -n $(echo $fip | grep "/") ||  $2 == "--help" ]]
   then
     cmddesc
     echo -e "--swName  \tswitch name" >&2
@@ -523,11 +524,13 @@ function unbind-fip()
     exit 1
   fi
 
+  checkOVSStatus
+  
   pswn="public-"${vmmac//:/}"-"$(hostname)
   $NB_CMD ls-del $pswn
 
-  router="r4"$switch
-  fport="from-"$router"-"${vmmac//:/}
+  router=$switch"-router"
+  fport=$router"-"${vmmac//:/}"-port"
   $NB_CMD lrp-del $fport
   pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
   $NB_CMD lr-nat-del $router dnat_and_snat $fip
