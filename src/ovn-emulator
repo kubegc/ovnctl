@@ -334,6 +334,105 @@ function create-switch()
 
 }
 
+function modify-switch()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  gway=$(echo $* | awk -F"--gateway" '{print$2}' | awk '{print$1}')
+  dhcp=$(echo $* | awk -F"--dhcp" '{print$2}' | awk '{print$1}')
+  imtu=$(echo $* | awk -F"--mtu" '{print$2}' | awk '{print$1}')
+  dnss=$(echo $* | awk -F"--dnsServer" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $name || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name       \tswitch name" >&2
+    echo -e "--gateway    \toptinal, gateway.  for example, 192.168.1.1"  >&2
+    echo -e "--dhcp       \toptinal, dhcp.  for example, 192.168.1.1"  >&2
+    echo -e "--mtu        \toptinal, mtu.  for example, 1480"  >&2
+    echo -e "--dnsServer  \toptinal, dns server"  >&2
+    exit 1
+  fi
+  
+  dhcpid=$($NB_CMD show $name | grep "dhcpv4id-$name-" | awk -F "dhcpv4id-$name-" '{print$2}') 
+  
+  if [[ -z $dhcpid ]]
+  then 
+    echo -e "invalid switch name"  >&2
+	exit 1
+  fi
+ 
+  thisdhcp=$($NB_CMD dhcp-options-get-options $dhcpid | grep "server_id" | awk -F"=" '{print$2}')
+  thisgway=$($NB_CMD dhcp-options-get-options $dhcpid | grep "router" | awk -F"=" '{print$2}')
+  rmac=$($NB_CMD dhcp-options-get-options $dhcpid | grep "server_mac" | awk -F"=" '{print$2}')
+  thismtu=$($NB_CMD dhcp-options-get-options $dhcpid | grep "mtu" | awk -F"=" '{print$2}')
+  thisdns=$($NB_CMD dhcp-options-get-options $dhcpid | grep "dns_server" | awk -F"=" '{print$2}')
+
+  if [[ -n $dhcp ]]
+  then
+    thisdhcp=$dhcp
+  fi
+
+  if [[ -n $gway ]]
+  then
+    thisgway=$gway
+  fi
+
+  if [[ -n $imtu ]]
+  then
+    thismtu=$imtu
+  fi
+
+  if [[ -n $dnss  ]]
+  then
+    thisdns=$dnss
+  fi
+
+  cmd="$dhcpid server_mac=$rmac lease_time=3600 mtu=$thismtu"
+  if [[ -n $thisdhcp ]]
+  then
+    cmd=$cmd" server_id=$thisdhcp"
+  fi
+
+  if [[ -n $thisgway ]]
+  then
+    cmd=$cmd" router=$thisgway"
+  fi
+
+  if [[ -n $thisdns ]]
+  then
+    cmd=$cmd" dns_server=$thisdns"
+  fi
+
+  $($NB_CMD dhcp-options-set-options $cmd)
+
+}
+
+function delete-switch()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $name || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name  \tswitch name" >&2
+    exit 1
+  fi
+
+  ## check
+  sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
+  if [[ -z $sid ]]
+  then
+    echo "cannot connect the master or the switch name does not exist" >&2
+    exit 1
+  fi
+  
+  ## delete
+  router='r4'$name
+  dhcpid=$($NB_CMD show $name | grep "dhcpv4id-$name-" | awk -F"dhcpv4id-$name-" '{print$2}')
+  $NB_CMD ls-del $name  >/dev/null  2>&1 
+  $NB_CMD lr-del $router >/dev/null  2>&1
+  $NB_CMD dhcp-options-del $dhcpid >/dev/null  2>&1  
+}
 
 function bind-fip()
 {
@@ -410,33 +509,171 @@ function unbind-fip()
   $NB_CMD lr-nat-del $router dnat_and_snat $pip
 }
 
-function delete-switch()
+###########################################################
+##
+##  ACL
+##
+##########################################################
+
+function create-acl()
 {
-  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
+  sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  vm=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
+  tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
+  rl=$(echo $* | awk -F"--rule" '{print$2}' | awk '{print$1}')
+  op=$(echo $* | awk -F"--operator" '{print$2}' | awk '{print$1}')
+  pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
   
-  if [[ -z $1 || -z $name || $2 == "--help" ]]
+  if [[ -z $1 || -z $do || -z $sw || -z $dr || -z $rl || -z $op || $2 == "--help" ]]
   then
     cmddesc
-    echo -e "--name  \tswitch name" >&2
-    exit 1
-  fi
-
-  ## check
-  sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
-  if [[ -z $sid ]]
-  then
-    echo "cannot connect the master or the switch name does not exist" >&2
+	echo -e "--domain     \tdomain" >&2
+    echo -e "--swName     \tswitch" >&2
+    echo -e "--vmmac      \tmac" >&2
+    echo -e "--type       \ttype, from or to"  >&2
+    echo -e "--rule       \trule, tcp.dest=1"  >&2
+    echo -e "--operator   \tallow or drop"  >&2
+    echo -e "--priority   \toptional, 1-1000"  >&2
     exit 1
   fi
   
-  ## delete
-  router='r4'$name
-  dhcpid=$($NB_CMD show $name | grep "dhcpv4id-$name-" | awk -F"dhcpv4id-$name-" '{print$2}')
-  $NB_CMD ls-del $name  >/dev/null  2>&1 
-  $NB_CMD lr-del $router >/dev/null  2>&1
-  $NB_CMD dhcp-options-del $dhcpid >/dev/null  2>&1  
+  ## check 
+  sid=$($NB_CMD ls-list | grep "($sw)" | awk '{print$1}')
+  if [[ -n $sid ]]
+  then
+    echo "cannot connect the master or the switch name exists" >&2
+    exit 1
+  fi
+  
+  ftport=""
+  ioport=""
+  if [[ $tp=="from" ]]
+  then
+    ftport="from-lport"
+	ioport="inport"
+  else if [[ $tp=="to" ]]
+  then
+    ftport="to-lport"
+	ioport="outport"
+  else
+    echo "wrong type, must be neither 'from' or 'to'" >&2
+	exit 1
+  fi
+  
+  operator=""
+  if [[ $op=="allow" ]]
+  then
+    operator="allow-related"
+  else if [[ $op=="drop" ]]
+  then
+	operator="drop"
+  else
+    echo "wrong operator, must be neither 'allow' or 'drop'" >&2
+	exit 1
+  fi
+  
+  if [[ -z $pr ]]
+  then
+    pr="100"
+  fi
+  
+  
+  port=$(NB_CMD show | grep -B 1 "$vm" | grep port | awk '{print$2}')
+  rule="";
+  
+  if [[ -z $port ]]
+  then
+    rule="\""$ioport" == "$rl"\""
+  else
+    rule="\""$ioport" == \""$port"\" && "$rl"\""
+  fi
+  
+  cmd="$NB_CMD acl-add "$sw" "$ftport" "$pr" "$rule" "$operator
 }
 
+
+function modify-acl()
+{
+  
+}
+
+function delete-acl()
+{
+  do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
+  sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  vm=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
+  tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
+  rl=$(echo $* | awk -F"--rule" '{print$2}' | awk '{print$1}')
+  op=$(echo $* | awk -F"--operator" '{print$2}' | awk '{print$1}')
+  pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $do || -z $sw || -z $dr || -z $rl || -z $op || $2 == "--help" ]]
+  then
+    cmddesc
+	echo -e "--domain     \tdomain" >&2
+    echo -e "--swName     \tswitch" >&2
+    echo -e "--vmmac      \tmac" >&2
+    echo -e "--type       \ttype, from or to"  >&2
+    echo -e "--rule       \trule, tcp.dest=1"  >&2
+    echo -e "--operator   \tallow or drop"  >&2
+    echo -e "--priority   \toptional, 1-1000"  >&2
+    exit 1
+  fi
+  
+  ## check 
+  sid=$($NB_CMD ls-list | grep "($sw)" | awk '{print$1}')
+  if [[ -n $sid ]]
+  then
+    echo "cannot connect the master or the switch name exists" >&2
+    exit 1
+  fi
+  
+  ftport=""
+  ioport=""
+  if [[ $tp=="from" ]]
+  then
+    ftport="from-lport"
+	ioport="inport"
+  else if [[ $tp=="to" ]]
+  then
+    ftport="to-lport"
+	ioport="outport"
+  else
+    echo "wrong type, must be neither 'from' or 'to'" >&2
+	exit 1
+  fi
+  
+  operator=""
+  if [[ $op=="allow" ]]
+  then
+    operator="allow-related"
+  else if [[ $op=="drop" ]]
+  then
+	operator="drop"
+  else
+    echo "wrong operator, must be neither 'allow' or 'drop'" >&2
+	exit 1
+  fi
+  
+  if [[ -z $pr ]]
+  then
+    pr="100"
+  fi
+  
+  
+  port=$(NB_CMD show | grep -B 1 "$vm" | grep port | awk '{print$2}')
+  rule="";
+  
+  if [[ -z $port ]]
+  then
+    rule="\""$ioport" == "$rl"\""
+  else
+    rule="\""$ioport" == \""$port"\" && "$rl"\""
+  fi
+  
+  cmd="$NB_CMD acl-del "$sw" "$ftport" "$pr" "$rule" "$operator
+}
 
 ###########################################################
 ##
@@ -528,9 +765,13 @@ function help()
   echo -e "  create-bridge  :\t(L2  ): create L2 bridge"
   echo -e "  delete-bridge  :\t(L2  ): delete L2 bridge"
   echo -e "  create-switch  :\t(L3  ): create L3 switch and gateway"
+  echo -e "  modify-switch  :\t(L3  ): modify L3 switch and gateway"
   echo -e "  delete-switch  :\t(L3  ): delete L3 switch and gateway"
   echo -e "  bind-fip       :\t(L3  ): bind floating IP"
   echo -e "  unbind-fip     :\t(L3  ): unbind floating IP"
+  echo -e "  create-acl     :\t(ACL ): create access control list"
+  echo -e "  modify-acl     :\t(ACL ): modify access control list"
+  echo -e "  delete-acl     :\t(ACL ): delete access control list"
   echo -e "  create-vm      :\t(Simu): create a VM"
   echo -e "  delete-vm      :\t(Simu): delete a VM"
 }
@@ -560,6 +801,9 @@ case $1 in
   "create-switch")
     create-switch $*
     ;;
+  "modify-switch")
+    modify-switch $*
+    ;;
   "delete-switch")
     delete-switch $*
     ;;
@@ -568,6 +812,15 @@ case $1 in
     ;;
   "unbind-fip")
     unbind-fip $*
+    ;;
+  "create-acl")
+    create-acl $*
+    ;;
+  "modify-acl")
+    modify-acl $*
+    ;;
+  "delete-acl")
+    delete-acl $*
     ;;
   "create-vm")
     create-vm $*
