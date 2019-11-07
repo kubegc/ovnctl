@@ -17,12 +17,15 @@ SDN for Kubernetes network
 
 # 2. Roadmap
 
-- ~~support vlan [1.1.0]~~
-- ~~support floating ip [1.2.0]~~
-- support ACL [1.3.0]
-- support QoS [1.4.0]
-- support vxlan [1.5.0]
-- support CNI [1.6.0]
+- Support geneve/IPv4 [1.x]
+  - ~~support vlan [1.1.0]~~
+  - ~~support floating ip [1.2.0]~~
+  - ~~upport ACL [1.3.0]~~
+  - support QoS [1.4.0]
+  - production ready [1.5.0]
+- Support vxlan [2.x]
+- Support CNI [3.x]
+- Support IPv6 [4.x]
 
 # Books
 
