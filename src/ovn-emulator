@@ -303,12 +303,12 @@ function create-switch()
   fi
    
   router='r4'$name
-  $NB_CMD lr-add $router
-   
   rport='rp4'$name
   rmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
   rmk=$(echo $subn | awk -F"/" '{print$2}')
   $NB_CMD lrp-add $router $rport $rmac $rip"/"$rmk
+  
+  $NB_CMD lr-add $router
   
   sport='sp4'$name
   $NB_CMD lsp-add $name $sport
