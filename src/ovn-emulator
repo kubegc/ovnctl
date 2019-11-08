@@ -483,9 +483,10 @@ function bind-fip()
   fport="public-"${vmmac//:/}"-port"
   ip=$(echo $fip | awk -F"/" '{print$1}')
   rmk=$(echo $fip | awk -F"/" '{print$2}')
-  pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
+  #pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
   imac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
   
+  #$NB_CMD lrp-add $router $fport  $imac $pip"/"$rmk
   $NB_CMD lrp-add $router $fport  $imac $pip"/"$rmk
   $NB_CMD lrp-set-gateway-chassis $fport $($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
 
@@ -498,15 +499,15 @@ function bind-fip()
   $NB_CMD lsp-set-options "from-"$fport router-port=$fport
   
   
-  $NB_CMD lsp-add $pswn $pswn"-localnet"
-  $NB_CMD lsp-set-addresses $pswn"-localnet" unknown
-  $NB_CMD lsp-set-type $pswn"-localnet" localnet
-  $NB_CMD lsp-set-options $pswn"-localnet" network_name=$pswn
+  $NB_CMD lsp-add $pswn "to-"$pswn"-localnet"
+  $NB_CMD lsp-set-addresses "to-"$pswn"-localnet" unknown
+  $NB_CMD lsp-set-type "to-"$pswn"-localnet" localnet
+  $NB_CMD lsp-set-options "to-"$pswn"-localnet" network_name=$pswn
   
   ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:br-ex
 
   $NB_CMD lr-nat-add $router dnat_and_snat $ip $vmip
-  $NB_CMD lr-nat-add $router dnat_and_snat $pip $vmip 
+  #$NB_CMD lr-nat-add $router dnat_and_snat $pip $vmip 
   
 }
 
@@ -533,9 +534,9 @@ function unbind-fip()
   router=$switch"-router"
   fport="public-"${vmmac//:/}"-port"
   $NB_CMD lrp-del $fport
-  pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
+  #pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
   $NB_CMD lr-nat-del $router dnat_and_snat $fip
-  $NB_CMD lr-nat-del $router dnat_and_snat $pip
+  #$NB_CMD lr-nat-del $router dnat_and_snat $pip
 }
 
 ###########################################################
