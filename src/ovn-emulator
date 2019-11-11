@@ -771,7 +771,6 @@ function create-qos()
 {
   do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
   ip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
-  vm=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
   po=$(echo $* | awk -F"--protocol" '{print$2}' | awk '{print$1}')
   rt=$(echo $* | awk -F"--rate" '{print$2}' | awk '{print$1}')
@@ -783,7 +782,6 @@ function create-qos()
     cmddesc
     echo -e "--domain     \tdomain" >&2
     echo -e "--fip        \tip/mask" >&2
-    echo -e "--vmmac      \tmac" >&2
     echo -e "--type       \ttype, from or to"  >&2
     echo -e "--protocol   \tprotocol, IP, tcp"  >&2
     echo -e "--rate       \trate, kbps"  >&2
@@ -833,7 +831,6 @@ function delete-qos()
 {
   do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
   ip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
-  vm=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
   po=$(echo $* | awk -F"--protocol" '{print$2}' | awk '{print$1}')
   pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
@@ -843,7 +840,6 @@ function delete-qos()
     cmddesc
     echo -e "--domain     \tdomain" >&2
     echo -e "--fip        \tip/mask" >&2
-    echo -e "--vmmac      \tmac" >&2
     echo -e "--type       \ttype, from or to"  >&2
     echo -e "--protocol   \tprotocol, IP, tcp"  >&2
     echo -e "--priority   \toptional, 1-32767"  >&2
@@ -851,12 +847,6 @@ function delete-qos()
   fi
   
   ## check 
-  sid=$($NB_CMD ls-list | grep "($sw)" | awk '{print$1}')
-  if [[ -z $sid ]]
-  then
-    echo "switch not exist" >&2
-    exit 1
-  fi
   
   ftport=""
   if [[ $tp == "from" ]]
