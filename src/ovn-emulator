@@ -332,6 +332,7 @@ function delbridge-vlan()
 function create-switch()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  brid=$(echo $* | awk -F"--bridge" '{print$2}' | awk '{print$1}')
   subn=$(echo $* | awk -F"--subnet" '{print$2}' | awk '{print$1}')
   gway=$(echo $* | awk -F"--gateway" '{print$2}' | awk '{print$1}')
   dhcp=$(echo $* | awk -F"--dhcp" '{print$2}' | awk '{print$1}')
@@ -339,10 +340,11 @@ function create-switch()
   excl=$(echo $* | awk -F"--excludeIPs" '{print$2}' | awk '{print$1}')
   dnss=$(echo $* | awk -F"--dnsServer" '{print$2}' | awk '{print$1}')
   
-  if [[ -z $1 || -z $name || -z $subn || $2 == "--help" ]]
+  if [[ -z $1 || -z $name || -z $brid || -z $subn || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name       \tswitch name" >&2
+    echo -e "--bridge     \tbridge name" >&2
     echo -e "--subnet     \tIP range. for example, 192.168.1.0/24"  >&2
     echo -e "--gateway    \toptinal, gateway.  for example, 192.168.1.1"  >&2
     echo -e "--mtu        \toptinal, mtu.  for example, 1480"  >&2
@@ -405,9 +407,9 @@ function create-switch()
    
       if [[ -z $eids ]] 
       then
-        ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge
+        ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$brid
       else
-        ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge,$eids
+        ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$brid,$eids
       fi
 
       if [[ -z $dnss ]]
@@ -526,8 +528,18 @@ function delete-switch()
   $NB_CMD ls-del $name  >/dev/null  2>&1 
   $NB_CMD lr-del $router >/dev/null  2>&1
   $NB_CMD dhcp-options-del $dhcpid >/dev/null  2>&1  
-  
-  #ovs-vsctl remove Open_vSwitch . external_ids ovn-bridge-mappings
+ 
+  ppnn=$($NB_CMD show | grep -A 1 $name"-router-port" | grep mac | awk -F"\"" '{print$2}')
+  ovsn=${ppnn//:/}"-to-"$router"-port-"$hostname"-localnet:"$bridge
+  full=$(ovs-vsctl list Open_vSwitch | grep external_ids | awk -F"ovn-bridge-mappings=\""  '{print$2}' | awk -F"\"" '{print$1}') 
+ 
+  remain=${full//$ovsn/}
+  if [[ ${remain:0:1}=="," ]]
+  then
+    ovs-vsctl set Open_vSwitch . external_ids:ovn-bridge-mappings=${remain:1}
+  else
+    ovs-vsctl remove Open_vSwitch . external_ids ovn-bridge-mappings
+  fi 
 }
 
 function bind-fip()
