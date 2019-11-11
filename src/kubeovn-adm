@@ -376,6 +376,7 @@ function delbridge-vlan()
 function create-switch()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  bridge=$(echo $* | awk -F"--bridge" '{print$2}' | awk '{print$1}')
   subn=$(echo $* | awk -F"--subnet" '{print$2}' | awk '{print$1}')
   gway=$(echo $* | awk -F"--gateway" '{print$2}' | awk '{print$1}')
   dhcp=$(echo $* | awk -F"--dhcp" '{print$2}' | awk '{print$1}')
@@ -383,11 +384,12 @@ function create-switch()
   excl=$(echo $* | awk -F"--excludeIPs" '{print$2}' | awk '{print$1}')
   dnss=$(echo $* | awk -F"--dnsServer" '{print$2}' | awk '{print$1}')
   
-  if [[ -z $1 || -z $name || $2 == "--help" ]]
+  if [[ -z $1 || -z $name || -z $subn || -z $bridge || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name       \tswitch name" >&2
-    echo -e "--subnet     \toptinal, IP range. for example, 192.168.1.0/24"  >&2
+    echo -e "--subnet     \tIP range. for example, 192.168.1.0/24"  >&2
+	echo -e "--bridge     \tbridge"  >&2
     echo -e "--gateway    \toptinal, gateway.  for example, 192.168.1.1"  >&2
     echo -e "--mtu        \toptinal, mtu.  for example, 1480"  >&2
     echo -e "--dhcp       \toptinal, dhcp"  >&2
