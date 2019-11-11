@@ -521,25 +521,27 @@ function delete-switch()
     echo "cannot connect the master or the switch name does not exist" >&2
     exit 1
   fi
+
+  ## del db
+  router=$name"-router"
+  ppnn=$($NB_CMD show | grep -A 1 $router"-port" | grep mac | awk -F"\"" '{print$2}')
+  ovsn=${ppnn//:/}"-to-"$router"-port-"$(hostname)"-localnet:"$bridge
+  full=$(ovs-vsctl list Open_vSwitch | grep external_ids | awk -F"ovn-bridge-mappings=\""  '{print$2}' | awk -F"\"" '{print$1}')
+
+  remain=${full//$ovsn/}
+  if [[ -n ${remain:1:2} ]]
+  then
+    ovs-vsctl set Open_vSwitch . external_ids:ovn-bridge-mappings=${remain:1}
+  else
+    ovs-vsctl remove Open_vSwitch . external_ids ovn-bridge-mappings
+  fi
   
   ## delete
-  router=$name"-router"
   dhcpid=$($NB_CMD show $name | grep "dhcpv4id-$name-" | awk -F"dhcpv4id-$name-" '{print$2}')
   $NB_CMD ls-del $name  >/dev/null  2>&1 
   $NB_CMD lr-del $router >/dev/null  2>&1
   $NB_CMD dhcp-options-del $dhcpid >/dev/null  2>&1  
  
-  ppnn=$($NB_CMD show | grep -A 1 $name"-router-port" | grep mac | awk -F"\"" '{print$2}')
-  ovsn=${ppnn//:/}"-to-"$router"-port-"$hostname"-localnet:"$bridge
-  full=$(ovs-vsctl list Open_vSwitch | grep external_ids | awk -F"ovn-bridge-mappings=\""  '{print$2}' | awk -F"\"" '{print$1}') 
- 
-  remain=${full//$ovsn/}
-  if [[ ${remain:0:1}=="," ]]
-  then
-    ovs-vsctl set Open_vSwitch . external_ids:ovn-bridge-mappings=${remain:1}
-  else
-    ovs-vsctl remove Open_vSwitch . external_ids ovn-bridge-mappings
-  fi 
 }
 
 function bind-fip()
