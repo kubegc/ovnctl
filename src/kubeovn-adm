@@ -439,18 +439,25 @@ function create-switch()
       $NB_CMD lsp-set-addresses $mport $rmac
       $NB_CMD lsp-set-options $mport router-port=$rport
   
+
+      #lsport='to-'$rport
+      
+      #$NB_CMD lsp-add $name $lsport
+      #$NB_CMD lsp-set-type $lsport router
+      #$NB_CMD lsp-set-addresses $lsport $rmac
+      #$NB_CMD lsp-set-options $lsport router-port=$rport
+      
+
       sport='to-'$rport'-'$(hostname)'-localnet'
-      #$NB_CMD lsp-add $name $sport
-      #$NB_CMD lsp-set-type $sport router
-      #$NB_CMD lsp-set-addresses $sport $rmac
-      #$NB_CMD lsp-set-options $sport router-port=$rport
-	  $NB_CMD lsp-add $name $sport
+      $NB_CMD lsp-add $name $sport
       $NB_CMD lsp-set-addresses $sport unknown
       $NB_CMD lsp-set-type $sport localnet
 	  pswn=${rmac//:/}"-"$sport
+
+      
       $NB_CMD lsp-set-options $sport network_name=$pswn
   
-  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge
+      ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge
 
       if [[ -z $dnss ]]
       then
