@@ -331,8 +331,6 @@ function delbridge-vlan()
 
 function create-switch()
 {
-  function create-switch()
-{
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
   subn=$(echo $* | awk -F"--subnet" '{print$2}' | awk '{print$1}')
   gway=$(echo $* | awk -F"--gateway" '{print$2}' | awk '{print$1}')
