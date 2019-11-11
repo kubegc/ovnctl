@@ -433,6 +433,12 @@ function create-switch()
       rmk=$(echo $subn | awk -F"/" '{print$2}')
       $NB_CMD lrp-add $router $rport $rmac $dhcp"/"$rmk
   
+      mport="mapping-to-"$router
+      $NB_CMD lsp-add $name $mport
+      $NB_CMD lsp-set-type $mport
+      $NB_CMD lsp-set-addresses $mport $rmac
+      $NB_CMD lsp-set-options $mport router-port=$rport
+  
       sport='to-'$rport'-'$(hostname)'-localnet'
       #$NB_CMD lsp-add $name $sport
       #$NB_CMD lsp-set-type $sport router
