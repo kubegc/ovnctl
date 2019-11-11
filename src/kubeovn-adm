@@ -861,7 +861,6 @@ function delete-acl()
   $NB_CMD acl-del $sw $ftport $pr "$rule"
 }
 
-
 function bind-fip()
 {
   switch=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
@@ -948,7 +947,6 @@ function unbind-fip()
   $NB_CMD lr-nat-del $router dnat_and_snat $fip
   #$NB_CMD lr-nat-del $router dnat_and_snat $pip
 }
-
 
 ###########################################################
 ##

@@ -276,6 +276,53 @@ function delete-bridge()
 
 }
 
+# Set vlan id for port
+
+function setbridge-vlan()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $name || -z $vlan || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name     \tbridge name" >&2
+    echo -e "--vlan     \tvlan id" >&2
+    exit 1
+  fi
+
+
+  ovs-vsctl add-br $name"-"$vlan $name $vlan
+  ovs-vsctl set interface $name"-"$vlan type=internal  
+}
+
+# Delete port's vlan id
+
+function delbridge-vlan()
+{
+
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  vlan=$(echo $* | awk -F"--vlan" '{print$2}' | awk '{print$1}')
+
+  if [[ -z $1 || -z $name || -z $vlan || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name    \tbridge name" >&2
+    echo -e "--vlan    \tvlan" >&2
+    exit 1
+  fi
+
+  res=$(ovs-vsctl br-to-parent $name"-"$vlan)
+
+  if [[ $res != $name ]]
+  then
+    echo "wrong vlan id in bridge $name" >&2
+    exit 1
+  fi
+
+  ovs-vsctl --if-exist del-br $name"-"$vlan
+}
+
 ###########################################################
 ##
 ##  L3 switch
@@ -921,6 +968,8 @@ function help()
   echo -e "  init-network   :\t(Init): create br-ex"
   echo -e "  create-bridge  :\t(L2  ): create L2 bridge"
   echo -e "  delete-bridge  :\t(L2  ): delete L2 bridge"
+  echo -e "  setbridge-vlan :\t(L2  ): Set L2 bridge vlan"
+  echo -e "  delbridge-vlan :\t(L2  ): Delete L2 bridge vlan"
   echo -e "  create-switch  :\t(L3  ): create L3 switch and gateway"
   echo -e "  modify-switch  :\t(L3  ): modify L3 switch and gateway"
   echo -e "  delete-switch  :\t(L3  ): delete L3 switch and gateway"
@@ -957,6 +1006,12 @@ case $1 in
     ;;
   "delete-bridge")
     delete-bridge $*
+    ;;
+  "setbridge-vlan")
+    setbridge-vlan $*
+    ;;
+  "delbridge-vlan")
+    delbridge-vlan $*
     ;;
   "create-switch")
     create-switch $*
