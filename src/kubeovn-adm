@@ -56,6 +56,48 @@ NB_CMD="ovn-nbctl --db=tcp:$MASTER:$NB_PORT"
 SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
 
 
+function checkOVSStatus()
+{
+  res=$(systemctl status openvswitch | grep Active | awk -F":" '{print $2}' | awk '{print$1}')
+  if [[ $res != "active" ]]
+  then
+    echo "please start openvswitch first" >&2
+    exit 1
+  fi
+}
+
+function checkNICConfig()
+{
+  nic=$1
+  if [[ ! -f $IFCFG"ifcfg-$nic" ]]
+  then
+    echo "wrong NIC name" >&2
+    exit 1
+  fi  
+}
+
+function checkDuplicate()
+{
+  name=$1
+  sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
+  if [[ -n $sid ]]
+  then
+    echo "cannot connect the master or the switch name exists" >&2
+    exit 1
+  fi
+}
+
+function checkDHCP()
+{
+  dhcpid=$1
+  if [[ -z $dhcpid ]]
+  then 
+    echo -e "invalid switch name"  >&2
+	exit 1
+  fi
+}
+
+
 ###########################################################
 ##
 ##  init env
@@ -385,14 +427,22 @@ function create-switch()
       rmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
  
       $NB_CMD lr-add $router
+	  $NB_CMD set Logical_router $router options:chassis=$($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
       rmk=$(echo $subn | awk -F"/" '{print$2}')
       $NB_CMD lrp-add $router $rport $rmac $dhcp"/"$rmk
   
-      sport='to-'$rport
-      $NB_CMD lsp-add $name $sport
-      $NB_CMD lsp-set-type $sport router
-      $NB_CMD lsp-set-addresses $sport $rmac
-      $NB_CMD lsp-set-options $sport router-port=$rport
+      sport='to-'$rport'-'$(hostname)'-localnet'
+      #$NB_CMD lsp-add $name $sport
+      #$NB_CMD lsp-set-type $sport router
+      #$NB_CMD lsp-set-addresses $sport $rmac
+      #$NB_CMD lsp-set-options $sport router-port=$rport
+	  $NB_CMD lsp-add $name $sport
+      $NB_CMD lsp-set-addresses $sport unknown
+      $NB_CMD lsp-set-type $sport localnet
+	  pswn=${rmac//:/}"-"$sport
+      $NB_CMD lsp-set-options $sport network_name=$pswn
+  
+  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge
 
       if [[ -z $dnss ]]
       then
