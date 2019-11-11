@@ -435,7 +435,7 @@ function create-switch()
   
       mport="mapping-to-"$router
       $NB_CMD lsp-add $name $mport
-      $NB_CMD lsp-set-type $mport
+      $NB_CMD lsp-set-type $mport router
       $NB_CMD lsp-set-addresses $mport $rmac
       $NB_CMD lsp-set-options $mport router-port=$rport
   
@@ -456,8 +456,15 @@ function create-switch()
 
       
       $NB_CMD lsp-set-options $sport network_name=$pswn
-  
-      ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge
+ 
+      eids=$(ovs-vsctl list Open_vSwitch | grep external_ids | awk -F"ovn-bridge-mappings=\"" '{print$2}' | awk -F"\"" '{print$1}')
+   
+      if [[ -z $eids ]] 
+      then
+        ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge
+      else
+        ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge,$eids
+      fi
 
       if [[ -z $dnss ]]
       then
