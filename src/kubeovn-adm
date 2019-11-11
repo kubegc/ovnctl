@@ -1098,7 +1098,9 @@ function help()
   echo -e "  start-worker   :\t(Init): Start worker  node"
   echo -e "  stop-worker    :\t(Init): Stop  worker  node"
   echo -e "  create-bridge  :\t(L2  ): Create L2 bridge"
-  echo -e "  delete-bridge  :\t(L2  ): Delete L2 bridge"
+  echo -e "  create-bridge  :\t(L2  ): Create L2 bridge"
+  echo -e "  setbridge-vlan :\t(L2  ): Set L2 bridge vlan"
+  echo -e "  delbridge-vlan :\t(L2  ): Delete L2 bridge vlan"
   echo -e "  create-fip     :\t(L2  ): Create L2's floating IP"
   echo -e "  delete-fip     :\t(L2  ): Delete L2's floating IP"
   echo -e "  create-switch  :\t(L3  ): Create L3 switch and gateway"
@@ -1135,6 +1137,12 @@ case $1 in
     ;;
   "delete-bridge")
     delete-bridge $*
+    ;;
+  "setbridge-vlan")
+    setbridge-vlan $*
+    ;;
+  "delbridge-vlan")
+    delbridge-vlan $*
     ;;
   "create-switch")
     create-switch $*
