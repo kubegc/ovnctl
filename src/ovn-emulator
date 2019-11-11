@@ -463,13 +463,15 @@ function delete-switch()
 function bind-fip()
 {
   switch=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  bridge=$(echo $* | awk -F"--bridge" '{print$2}' | awk '{print$1}')
   vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
  
-  if [[ -z $1 || -z $switch || -z $vmmac || -z $fip || -z $(echo $fip | grep "/") || $2 == "--help" ]]
+  if [[ -z $1 || -z $switch || -z $bridge || -z $vmmac || -z $fip || -z $(echo $fip | grep "/") || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--swName  \tswitch name" >&2
+    echo -e "--bridge  \tbridge" >&2
     echo -e "--vmmac   \tvm mac" >&2
     echo -e "--fip     \tflating ip and mask, for example, 192.168.1.1/24" >&2
     exit 1
@@ -477,6 +479,13 @@ function bind-fip()
 
   checkOVSStatus
 
+  res=$(ovs-vsctl list-br | grep $bridge)
+  if [[ -z $res ]]
+  then
+    echo -e "cannot find bridge" >&2
+    exit 1
+  fi
+  
   vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
 
   router=$switch"-router"
@@ -498,13 +507,12 @@ function bind-fip()
   $NB_CMD lsp-set-addresses "from-"$fport $imac
   $NB_CMD lsp-set-options "from-"$fport router-port=$fport
   
-  
   $NB_CMD lsp-add $pswn "to-"$pswn"-localnet"
   $NB_CMD lsp-set-addresses "to-"$pswn"-localnet" unknown
   $NB_CMD lsp-set-type "to-"$pswn"-localnet" localnet
   $NB_CMD lsp-set-options "to-"$pswn"-localnet" network_name=$pswn
   
-  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:br-ex
+  ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge
 
   $NB_CMD lr-nat-add $router dnat_and_snat $ip $vmip
   #$NB_CMD lr-nat-add $router dnat_and_snat $pip $vmip 

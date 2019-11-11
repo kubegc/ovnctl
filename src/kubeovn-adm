@@ -47,8 +47,7 @@ TABLE_DHCP="DHCP_Options"
 ## OVN core, please install Kubernetes first
 
 MASTER=$(cat /root/.kube/config  | grep server |awk -F"server:" '{print$2}' | awk -F"https://" '{print$2}' | awk -F":" '{print$1}')
-THISIP=$(kubectl get node $(hostname) -o yaml | grep -B 1 "type: InternalIP" | grep address | awk -F": " '{print$2}')
-
+THISIP=$(kubectl get node vm.$(hostname) -o yaml | grep -B 1 "type: InternalIP" | grep address | awk -F": " '{print$2}')
 
 NB_PORT="6641"
 SB_PORT="6642"
