@@ -50,6 +50,11 @@ SB_PORT="6642"
 NB_CMD="ovn-nbctl --db=tcp:$MASTER:$NB_PORT"
 SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
 
+###########################################################
+##
+##  Utils
+##
+##########################################################
 
 function checkOVSStatus()
 {
@@ -116,7 +121,6 @@ function start-central()
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
   #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
   sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
-
 }
 
 function stop-central()
@@ -136,22 +140,19 @@ function start-worker()
   systemctl enable  openvswitch
   systemctl start   ovn-controller
   systemctl enable  ovn-controller
-  systemctl start   ovn-controller-vtep
-  systemctl enable  ovn-controller-vtep
 
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
   #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
   sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
   sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$MASTER:6642
   sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$THISIP 
+  sudo ovs-vsctl set open . external-ids:ovn-nb="tcp:$MASTER:6641" 
 }
 
 function stop-worker()
 {
   systemctl stop    ovn-controller
   systemctl disable ovn-controller
-  systemctl stop    ovn-controller-vtep
-  systemctl disable ovn-controller-vtep
 }
 
 function clear()
@@ -1023,7 +1024,7 @@ function create-qos()
   do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
   sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
-  po=$(echo $* | awk -F"--protocol" '{print$2}' | awk '{print$1}')
+  po=$(echo $* | awk -F"--protocol" '{print$2}' | awk -F"--" '{print$1}')
   rt=$(echo $* | awk -F"--rate" '{print$2}' | awk '{print$1}')
   bu=$(echo $* | awk -F"--burst" '{print$2}' | awk '{print$1}')
   pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
@@ -1082,7 +1083,7 @@ function delete-qos()
   do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
   sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
-  po=$(echo $* | awk -F"--protocol" '{print$2}' | awk '{print$1}')
+  po=$(echo $* | awk -F"--protocol" '{print$2}' | awk -F"--" '{print$1}')
   pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
   
   if [[ -z $1 || -z $sw || -z $tp || -z $po || $2 == "--help" ]]
