@@ -385,9 +385,9 @@ function create-switch()
     echo -e "--name       \tswitch name" >&2
     echo -e "--subnet     \tIP range. for example, 192.168.1.0/24"  >&2
     echo -e "--gateway    \tgateway.  for example, 192.168.1.1"  >&2
-	echo -e "--dhcp       \tdhcp"  >&2
+    echo -e "--dhcp       \tdhcp"  >&2
     echo -e "--mtu        \toptinal, mtu.  for example, 1480"  >&2
-	echo -e "--bridge     \toptinal,bridge"  >&2
+    echo -e "--bridge     \toptinal,bridge"  >&2
     echo -e "--excludeIPs \toptinal, excludeIPs.  192.168.1.1,192.168.1.10..192.168.1.100"  >&2
     echo -e "--dnsServer  \toptinal, dnsServer.  192.168.1.1"  >&2
     exit 1
@@ -424,10 +424,7 @@ function create-switch()
       rmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
  
       $NB_CMD lr-add $router
-	  if [[ -n $bridge ]]
-	  then
-	    $NB_CMD set Logical_router $router options:chassis=$($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
-	  fi
+      $NB_CMD set Logical_router $router options:chassis=$($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
 	  
       rmk=$(echo $subn | awk -F"/" '{print$2}')
       $NB_CMD lrp-add $router $rport $rmac $dhcp"/"$rmk
@@ -438,8 +435,7 @@ function create-switch()
       $NB_CMD lsp-set-addresses $mport $rmac
       $NB_CMD lsp-set-options $mport router-port=$rport
        
-	   
-	  if [[ -z $bridge ]]
+      if [[ -n $bridge ]]
       then 
         sport='to-'$rport'-'$(hostname)'-localnet'
         $NB_CMD lsp-add $name $sport
@@ -457,7 +453,7 @@ function create-switch()
         else
           ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge,$eids
         fi
-	  fi
+      fi
 
       if [[ -z $dnss ]]
       then
@@ -551,7 +547,7 @@ function delete-switch()
   then
     cmddesc
     echo -e "--name  \tswitch name" >&2
-	echo -e "--bridge  \tbridge name" >&2
+    echo -e "--bridge  \tbridge name" >&2
     exit 1
   fi
 
@@ -566,17 +562,20 @@ function delete-switch()
   fi
 
   ## del db
-  router=$name"-router"
-  ppnn=$($NB_CMD show | grep -A 1 $router"-port" | grep mac | awk -F"\"" '{print$2}')
-  ovsn=${ppnn//:/}"-to-"$router"-port-"$(hostname)"-localnet:"$bridge
-  full=$(ovs-vsctl list Open_vSwitch | grep external_ids | awk -F"ovn-bridge-mappings=\""  '{print$2}' | awk -F"\"" '{print$1}')
-
-  remain=${full//$ovsn/}
-  if [[ -n ${remain:1:2} ]]
+  if [[ -n $bridge ]]
   then
-    ovs-vsctl set Open_vSwitch . external_ids:ovn-bridge-mappings=${remain:1}
-  else
-    ovs-vsctl remove Open_vSwitch . external_ids ovn-bridge-mappings
+    router=$name"-router"
+    ppnn=$($NB_CMD show | grep -A 1 $router"-port" | grep mac | awk -F"\"" '{print$2}')
+    ovsn=${ppnn//:/}"-to-"$router"-port-"$(hostname)"-localnet:"$bridge
+    full=$(ovs-vsctl list Open_vSwitch | grep external_ids | awk -F"ovn-bridge-mappings=\""  '{print$2}' | awk -F"\"" '{print$1}')
+
+    remain=${full//$ovsn/}
+    if [[ -n ${remain:1:2} ]]
+    then
+      ovs-vsctl set Open_vSwitch . external_ids:ovn-bridge-mappings=${remain:1}
+    else
+      ovs-vsctl remove Open_vSwitch . external_ids ovn-bridge-mappings
+    fi
   fi
   
   ## delete
@@ -837,6 +836,7 @@ function unbind-fip()
   switch=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
   vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
+  vmip=$(echo $* | awk -F"--vmip" '{print$2}' | awk '{print$1}')
 
   if [[ -z $1 || -z $switch || -z $vmmac || -z $fip || -n $(echo $fip | grep "/") ||  $2 == "--help" ]]
   then
@@ -844,6 +844,7 @@ function unbind-fip()
     echo -e "--swName  \tswitch name" >&2
     echo -e "--vmmac   \tvm mac" >&2
     echo -e "--fip     \tfip" >&2
+    echo -e "--vmip    \tvmip" >&2
     exit 1
   fi
 
@@ -853,7 +854,7 @@ function unbind-fip()
   fport="public-"${vmmac//:/}"-port"
   $NB_CMD lrp-del $fport
   $NB_CMD lr-nat-del $router snat $fip
-  $NB_CMD lr-nat-del $router dnat $fip
+  $NB_CMD lr-nat-del $router dnat $vmip
 }
 
 ###########################################################
