@@ -629,7 +629,7 @@ function create-acl()
   sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
   vm=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
-  rl=$(echo $* | awk -F"--rule" '{print$2}')
+  rl=$(echo $* | awk -F"--rule" '{print$2}' | awk -F"--" '{print$1}')
   op=$(echo $* | awk -F"--operator" '{print$2}' | awk '{print$1}')
   pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
   
@@ -713,7 +713,7 @@ function delete-acl()
   sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
   vm=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
-  rl=$(echo $* | awk -F"--rule" '{print$2}')
+  rl=$(echo $* | awk -F"--rule" '{print$2}' | awk -F"--" '{print$1}')
   pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
   
   if [[ -z $1 || -z $sw || -z $vm || -z $tp || -z $rl || $2 == "--help" ]]
@@ -839,7 +839,7 @@ function modify-qos()
 # qos-del switch [direction [priority match]]
 function delete-qos()
 {
-  do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
+  do=$(echo $* | awk -F"-- " '{print$2}' | awk '{print$1}')
   ip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
   po=$(echo $* | awk -F"--protocol" '{print$2}' | awk '{print$1}')
