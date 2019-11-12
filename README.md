@@ -54,3 +54,5 @@ SDN for Kubernetes network
 
 - VxLan
   - http://docs.openvswitch.org/en/latest/howto/vtep/
+  - https://hechao.li/2018/05/15/VXLAN-Hands-on-Lab/
+  - https://docs.pica8.com/display/picos2102cg/OVSDB+VTEP+with+vtep-ctl+Configuration+Examples
