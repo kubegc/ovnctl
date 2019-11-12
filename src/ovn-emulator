@@ -589,7 +589,9 @@ function bind-fip()
   $NB_CMD lsp-set-addresses "from-"$fport $imac
   $NB_CMD lsp-set-options "from-"$fport router-port=$fport
 
-  $NB_CMD lr-nat-add $router dnat_and_snat $ip $vmip
+  #$NB_CMD lr-nat-add $router dnat_and_snat $ip $vmip
+  $NB_CMD lr-nat-add $router snat $ip $vmip
+  $NB_CMD lr-nat-add $router dnat $ip $vmip
   
 }
 
@@ -613,7 +615,9 @@ function unbind-fip()
   router=$switch"-router"
   fport="public-"${vmmac//:/}"-port"
   $NB_CMD lrp-del $fport
-  $NB_CMD lr-nat-del $router dnat_and_snat $fip
+  #$NB_CMD lr-nat-del $router dnat_and_snat $fip
+  $NB_CMD lr-nat-del $router dnat $fip
+  $NB_CMD lr-nat-del $router snat $fip
 }
 
 ###########################################################
