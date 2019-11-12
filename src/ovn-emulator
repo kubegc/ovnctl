@@ -13,7 +13,7 @@ export LD_LIBRARY_PATH="/usr/lib64"
 
 MASTER=$(cat /etc/ovn-emulator.conf | grep master | awk -F"=" '{print$2}')
 THISIP=$(cat /etc/ovn-emulator.conf | grep thisip | awk -F"=" '{print$2}')
-VERSION="1.2.0"
+VERSION="1.5.0"
 IFCFG="/etc/sysconfig/network-scripts/"
 
 NB_PORT="6641"
@@ -64,8 +64,6 @@ function start-worker()
   systemctl enable  openvswitch
   systemctl start   ovn-controller
   systemctl enable  ovn-controller
-  systemctl start   ovn-controller-vtep
-  systemctl enable  ovn-controller-vtep
 
   sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
   #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
@@ -78,8 +76,6 @@ function stop-worker()
 {
   systemctl stop    ovn-controller
   systemctl disable ovn-controller
-  systemctl stop    ovn-controller-vtep
-  systemctl disable ovn-controller-vtep
 }
 
 function init-network()
