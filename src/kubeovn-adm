@@ -876,7 +876,7 @@ function create-acl()
   sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
   vm=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
-  rl=$(echo $* | awk -F"--rule" '{print$2}' | awk '{print$1}')
+  rl=$(echo $* | awk -F"--rule" '{print$2}')
   op=$(echo $* | awk -F"--operator" '{print$2}' | awk '{print$1}')
   pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
   
@@ -960,7 +960,7 @@ function delete-acl()
   sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
   vm=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
-  rl=$(echo $* | awk -F"--rule" '{print$2}' | awk '{print$1}')
+  rl=$(echo $* | awk -F"--rule" '{print$2}')
   pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
   
   if [[ -z $1 || -z $sw || -z $vm || -z $tp || -z $rl || $2 == "--help" ]]
