@@ -379,15 +379,15 @@ function create-switch()
   excl=$(echo $* | awk -F"--excludeIPs" '{print$2}' | awk '{print$1}')
   dnss=$(echo $* | awk -F"--dnsServer" '{print$2}' | awk '{print$1}')
   
-  if [[ -z $1 || -z $name || -z $bridge || -z $subn || $2 == "--help" ]]
+  if [[ -z $1 || -z $name || -z $subn || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name       \tswitch name" >&2
     echo -e "--subnet     \tIP range. for example, 192.168.1.0/24"  >&2
-    echo -e "--bridge     \tbridge"  >&2
-    echo -e "--gateway    \toptinal, gateway.  for example, 192.168.1.1"  >&2
+    echo -e "--gateway    \tgateway.  for example, 192.168.1.1"  >&2
+	echo -e "--dhcp       \tdhcp"  >&2
     echo -e "--mtu        \toptinal, mtu.  for example, 1480"  >&2
-    echo -e "--dhcp       \toptinal, dhcp"  >&2
+	echo -e "--bridge     \toptinal,bridge"  >&2
     echo -e "--excludeIPs \toptinal, excludeIPs.  192.168.1.1,192.168.1.10..192.168.1.100"  >&2
     echo -e "--dnsServer  \toptinal, dnsServer.  192.168.1.1"  >&2
     exit 1
@@ -424,7 +424,11 @@ function create-switch()
       rmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
  
       $NB_CMD lr-add $router
-	  $NB_CMD set Logical_router $router options:chassis=$($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
+	  if [[ -n $bridge ]]
+	  then
+	    $NB_CMD set Logical_router $router options:chassis=$($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
+	  fi
+	  
       rmk=$(echo $subn | awk -F"/" '{print$2}')
       $NB_CMD lrp-add $router $rport $rmac $dhcp"/"$rmk
   
@@ -433,32 +437,27 @@ function create-switch()
       $NB_CMD lsp-set-type $mport router
       $NB_CMD lsp-set-addresses $mport $rmac
       $NB_CMD lsp-set-options $mport router-port=$rport
-  
-
-      #lsport='to-'$rport
+       
+	   
+	  if [[ -z $bridge ]]
+      then 
+        sport='to-'$rport'-'$(hostname)'-localnet'
+        $NB_CMD lsp-add $name $sport
+        $NB_CMD lsp-set-addresses $sport unknown
+        $NB_CMD lsp-set-type $sport localnet
+        pswn=${rmac//:/}"-"$sport
       
-      #$NB_CMD lsp-add $name $lsport
-      #$NB_CMD lsp-set-type $lsport router
-      #$NB_CMD lsp-set-addresses $lsport $rmac
-      #$NB_CMD lsp-set-options $lsport router-port=$rport
-      
-
-      sport='to-'$rport'-'$(hostname)'-localnet'
-      $NB_CMD lsp-add $name $sport
-      $NB_CMD lsp-set-addresses $sport unknown
-      $NB_CMD lsp-set-type $sport localnet
-      pswn=${rmac//:/}"-"$sport
-      
-      $NB_CMD lsp-set-options $sport network_name=$pswn
+        $NB_CMD lsp-set-options $sport network_name=$pswn
  
-      eids=$(ovs-vsctl list Open_vSwitch | grep external_ids | awk -F"ovn-bridge-mappings=\"" '{print$2}' | awk -F"\"" '{print$1}')
+        eids=$(ovs-vsctl list Open_vSwitch | grep external_ids | awk -F"ovn-bridge-mappings=\"" '{print$2}' | awk -F"\"" '{print$1}')
    
-      if [[ -z $eids ]] 
-      then
-        ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge
-      else
-        ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge,$eids
-      fi
+        if [[ -z $eids ]] 
+        then
+          ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge
+        else
+          ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge,$eids
+        fi
+	  fi
 
       if [[ -z $dnss ]]
       then
@@ -819,8 +818,7 @@ function bind-fip()
   #pip=$(echo $ip | awk -F"." '{print$1"."$2"."$3}')".250"
   imac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
   
-  $NB_CMD lrp-add $router $fport  $imac $fip
-  #$NB_CMD lrp-set-gateway-chassis $fport $($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
+  $NB_CMD lrp-add $router $fport $imac $fip
 
   pswn="public-"${vmmac//:/}"-"$(hostname)
   
@@ -829,14 +827,8 @@ function bind-fip()
   $NB_CMD lsp-set-addresses "from-"$fport $imac
   $NB_CMD lsp-set-options "from-"$fport router-port=$fport
   
-  #$NB_CMD lsp-add $pswn "to-"$pswn"-localnet"
-  #$NB_CMD lsp-set-addresses "to-"$pswn"-localnet" unknown
-  #$NB_CMD lsp-set-type "to-"$pswn"-localnet" localnet
-  #$NB_CMD lsp-set-options "to-"$pswn"-localnet" network_name=$pswn
-  
-  #ovs-vsctl set Open_vSwitch . external-ids:ovn-bridge-mappings=$pswn:$bridge
-
-  $NB_CMD lr-nat-add $router dnat_and_snat $ip $vmip
+  $NB_CMD lr-nat-add $router dnat $ip $vmip
+  $NB_CMD lr-nat-add $router snat $ip $vmip
   
 }
 
@@ -860,7 +852,8 @@ function unbind-fip()
   router=$switch"-router"
   fport="public-"${vmmac//:/}"-port"
   $NB_CMD lrp-del $fport
-  $NB_CMD lr-nat-del $router dnat_and_snat $fip
+  $NB_CMD lr-nat-del $router snat $fip
+  $NB_CMD lr-nat-del $router dnat $fip
 }
 
 ###########################################################
