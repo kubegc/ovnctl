@@ -326,6 +326,51 @@ function delbridge-vlan()
 ##
 ##########################################################
 
+## Just Switch
+
+function just-switch()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  subn=$(echo $* | awk -F"--subnet" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $name || -z $subn || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name  \tswitch name" >&2
+    echo -e "--subnet\tIP range. for example, 192.168.1.0/24"  >&2
+    exit 1
+  fi
+
+  sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
+  if [[ -n $sid ]]
+  then
+    echo "cannot connect the master or the switch name exists" >&2
+    exit 1
+  fi
+  
+  router='r4'$name
+  rport='rp4'$name
+  rmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  rip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".1"
+  rmk=$(echo $subn | awk -F"/" '{print$2}')
+  $NB_CMD lr-add $router
+  $NB_CMD lrp-add $router $rport $rmac $rip"/"$rmk
+  
+  sport='sp4'$name
+  $NB_CMD ls-add $name
+  $NB_CMD set Logical_Switch $name other_config:subnet=$subn
+  $NB_CMD lsp-add $name $sport
+  $NB_CMD lsp-set-type $sport router
+  $NB_CMD lsp-set-addresses $sport $rmac
+  $NB_CMD lsp-set-options $sport router-port=$rport
+
+  #dmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  #dip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".128" 
+  did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\"")
+  $NB_CMD lsp-add $name "dhcpv4id-$name-"$did
+}
+
+
 ## Create a switch with a default DHCP
 
 function create-switch()
@@ -889,7 +934,6 @@ function create-vm()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
   switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}')
-  nic=$(echo $* | awk -F"--nic" '{print$2}' | awk '{print$1}')
   mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
   ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
   gway=$(echo $* | awk -F"--gateway" '{print$2}' | awk '{print$1}')
@@ -899,7 +943,6 @@ function create-vm()
     cmddesc
     echo -e "--name       \tVM name" >&2
     echo -e "--switch     \tSee kubeovn create-switch" >&2
-    echo -e "--nic        \tNIC"  >&2
     echo -e "--mac        \tMac"  >&2
     echo -e "--ip         \tIP"  >&2
     echo -e "--gateway    \tOptinal, Gateway"  >&2
@@ -914,18 +957,18 @@ function create-vm()
   fi
 
   sudo ip netns add $name
-  sudo ip link add $name-$nic type veth peer name veth-$name
+  sudo ip link add $name type veth peer name veth-$name
   sudo ip link set veth-$name up
-  sudo ip link set $name-$nic netns $name
-  sudo ip netns exec $name ip link set $name-$nic addres $mac
-  sudo ip netns exec $name ip link set $name-$nic up
+  sudo ip link set $name netns $name
+  sudo ip netns exec $name ip link set $name addres $mac
+  sudo ip netns exec $name ip link set $name up
   sudo ovs-vsctl add-port br-int veth-$name
 
   sudo $NB_CMD lsp-add $switch $switch-$name
   sudo $NB_CMD lsp-set-addresses $switch-$name "$mac $ip"
   
   sudo ovs-vsctl set Interface  veth-$name external_ids:iface-id=$switch-$name
-  sudo ip netns exec $name ip addr add $ip/24 dev $name-$nic
+  sudo ip netns exec $name ip addr add $ip/24 dev $name
   sudo ip netns exec $name ip route add default via $gway
 }
 
@@ -972,6 +1015,7 @@ function help()
   echo -e "  delete-bridge  :\t(L2  ): delete L2 bridge"
   echo -e "  setbridge-vlan :\t(L2  ): Set L2 bridge vlan"
   echo -e "  delbridge-vlan :\t(L2  ): Delete L2 bridge vlan"
+  echo -e "  just-switch    :\t(L3  ): create L3 switch"
   echo -e "  create-switch  :\t(L3  ): create L3 switch and gateway"
   echo -e "  modify-switch  :\t(L3  ): modify L3 switch and gateway"
   echo -e "  delete-switch  :\t(L3  ): delete L3 switch and gateway"
@@ -1014,6 +1058,9 @@ case $1 in
     ;;
   "delbridge-vlan")
     delbridge-vlan $*
+    ;;
+  "just-switch")
+    just-switch $*
     ;;
   "create-switch")
     create-switch $*

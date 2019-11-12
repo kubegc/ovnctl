@@ -1,2 +1,0 @@
-name="--rule src.ip == ass && tcp.dst == as --as"
-echo $(echo $name | awk -F"--rule" '{print$2}' | awk -F"--" '{print$1}')
