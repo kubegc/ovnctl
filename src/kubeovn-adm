@@ -1027,18 +1027,18 @@ function delete-acl()
 function create-qos()
 {
   do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
-  ip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
+  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
   po=$(echo $* | awk -F"--protocol" '{print$2}' | awk '{print$1}')
   rt=$(echo $* | awk -F"--rate" '{print$2}' | awk '{print$1}')
   bu=$(echo $* | awk -F"--burst" '{print$2}' | awk '{print$1}')
   pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
   
-  if [[ -z $1 || -z $ip || -z $vm || -z $tp || -z $po || -z $rt || -z $(echo $ip | grep "/") || $2 == "--help" ]]
+  if [[ -z $1 || -z $mac || -z $tp || -z $po || -z $rt || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--domain     \tdomain" >&2
-    echo -e "--fip        \tip/mask" >&2
+    echo -e "--mac        \tmac" >&2
     echo -e "--type       \ttype, from or to"  >&2
     echo -e "--protocol   \tprotocol, IP, tcp"  >&2
     echo -e "--rate       \trate, kbps"  >&2
@@ -1066,12 +1066,12 @@ function create-qos()
     pr="100"
   fi
       
-  name=$($NB_CMD show | grep -B 2 $fip | grep port | awk '{print$2}')
+  fname=$($NB_CMD show | grep -B 1 ${mac,,} | grep port | awk '{print$2}')
   if [[ -z $bu ]]
   then  
-    $NB_CMD qos-add $name $ftport $pr "$po" rate=$rt
+    $NB_CMD qos-add ${fname%%-*} $ftport $pr "$po" rate=$rt
   else
-    $NB_CMD qos-add $name $ftport $pr "$po" rate=$rt burst=$bu
+    $NB_CMD qos-add ${fname%%-*} $ftport $pr "$po" rate=$rt burst=$bu
   fi
   
 }
@@ -1086,17 +1086,17 @@ function modify-qos()
 # qos-del switch [direction [priority match]]
 function delete-qos()
 {
-  do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
-  ip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
+  do=$(echo $* | awk -F"-- " '{print$2}' | awk '{print$1}')
+  mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
   po=$(echo $* | awk -F"--protocol" '{print$2}' | awk '{print$1}')
   pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
   
-  if [[ -z $1 || -z $ip || -z $(echo $ip | grep "/") || -z $vm || -z $tp || -z $po || $2 == "--help" ]]
+  if [[ -z $1 || -z $mac || -z $tp || -z $po || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--domain     \tdomain" >&2
-    echo -e "--fip        \tip/mask" >&2
+    echo -e "--mac        \tmac" >&2
     echo -e "--type       \ttype, from or to"  >&2
     echo -e "--protocol   \tprotocol, IP, tcp"  >&2
     echo -e "--priority   \toptional, 1-32767"  >&2
@@ -1122,12 +1122,12 @@ function delete-qos()
     pr="100"
   fi
   
-  name=$($NB_CMD show | grep -B 2 $fip | grep port | awk '{print$2}')
+  fname=$($NB_CMD show | grep -B 1 ${mac,,} | grep port | awk '{print$2}')
   if [[ -z $bu ]]
   then  
-    $NB_CMD qos-del $name $ftport $pr "$po" rate=$rt
+    $NB_CMD qos-del ${fname%%-*} $ftport $pr "$po" rate=$rt
   else
-    $NB_CMD qos-del $name $ftport $pr "$po" rate=$rt burst=$bu
+    $NB_CMD qos-del ${fname%%-*} $ftport $pr "$po" rate=$rt burst=$bu
   fi
 }
 
