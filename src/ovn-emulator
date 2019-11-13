@@ -1078,6 +1078,9 @@ function help()
   echo -e "  delete-switch  :\t(L3  ): delete L3 switch and gateway"
   echo -e "  bind-fip       :\t(L3  ): bind floating IP"
   echo -e "  unbind-fip     :\t(L3  ): unbind floating IP"
+  echo -e "  create-address :\t(L3  ): create Address for ACL"
+  echo -e "  modify-address :\t(L3  ): modify Address for ACL"
+  echo -e "  delete-address :\t(L3  ): delete Address for ACL"
   echo -e "  create-acl     :\t(ACL ): create access control list for [Virtual] OS enviroments"
   echo -e "  modify-acl     :\t(ACL ): modify access control list for [Virtual] OS enviroments"
   echo -e "  delete-acl     :\t(ACL ): delete access control list for [Virtual] OS enviroments"
@@ -1127,6 +1130,15 @@ case $1 in
     ;;
   "delete-switch")
     delete-switch $*
+    ;;
+  "create-address")
+    create-address $*
+    ;;
+  "modify-address")
+    modify-address $*
+    ;;
+  "delete-address")
+    delete-address $*
     ;;
   "bind-fip")
     bind-fip $*
