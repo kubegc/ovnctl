@@ -1024,7 +1024,7 @@ function create-qos()
   do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
   sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
-  po=$(echo $* | awk -F"--protocol" '{print$2}' | awk -F"--" '{print$1}')
+  po=$(echo $* | awk -F"--rule" '{print$2}' | awk -F"--" '{print$1}')
   rt=$(echo $* | awk -F"--rate" '{print$2}' | awk '{print$1}')
   bu=$(echo $* | awk -F"--burst" '{print$2}' | awk '{print$1}')
   pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
@@ -1033,9 +1033,9 @@ function create-qos()
   then
     cmddesc
     echo -e "--domain     \tdomain" >&2
-    echo -e "--seName        \tswitch name" >&2
+    echo -e "--seName     \tswitch name" >&2
     echo -e "--type       \ttype, from or to"  >&2
-    echo -e "--protocol   \tprotocol, IP, tcp"  >&2
+    echo -e "--rule       \trule, IP, tcp"  >&2
     echo -e "--rate       \trate, kbps"  >&2
     echo -e "--burst      \toptional, burst, kbps"  >&2
     echo -e "--priority   \toptional, 1-32767"  >&2
@@ -1083,7 +1083,7 @@ function delete-qos()
   do=$(echo $* | awk -F"--domain" '{print$2}' | awk '{print$1}')
   sw=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
   tp=$(echo $* | awk -F"--type" '{print$2}' | awk '{print$1}')
-  po=$(echo $* | awk -F"--protocol" '{print$2}' | awk -F"--" '{print$1}')
+  po=$(echo $* | awk -F"--rule" '{print$2}' | awk -F"--" '{print$1}')
   pr=$(echo $* | awk -F"--priority" '{print$2}' | awk '{print$1}')
   
   if [[ -z $1 || -z $sw || -z $tp || -z $po || $2 == "--help" ]]
@@ -1092,7 +1092,7 @@ function delete-qos()
     echo -e "--domain     \tdomain" >&2
     echo -e "--swName     \tswitch name" >&2
     echo -e "--type       \ttype, from or to"  >&2
-    echo -e "--protocol   \tprotocol, IP, tcp"  >&2
+    echo -e "--rule       \trule, IP, tcp"  >&2
     echo -e "--priority   \toptional, 1-32767"  >&2
     exit 1
   fi
@@ -1124,7 +1124,60 @@ function delete-qos()
   fi
 }
 
+###########################################################
+##
+##  Address
+##
+##########################################################
 
+# ovn-nbctl create Address_Set name=www address=10.10.10.11,10.10.10.13,192.168.96.0/21
+function create-address()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  addr=$(echo $* | awk -F"--address" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $name || -z $addr || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name       \tname" >&2
+    echo -e "--address    \taddress" >&2
+    exit 1
+  fi
+  
+  $NB_CMD create Address_Set name=$name address=$addr
+}
+
+# qos-del switch [direction [priority match]]
+function modify-address()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  addr=$(echo $* | awk -F"--address" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $name || -z $addr || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name       \tname" >&2
+    echo -e "--address    \taddress" >&2
+    exit 1
+  fi
+  
+  $NB_CMD set Address_Set name=$name address=$addr
+}
+
+# ovn-nbctl create Address_Set name=www address=10.10.10.11,10.10.10.13,192.168.96.0/21
+function delete-address()
+{
+  name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
+  
+  if [[ -z $1 || -z $name || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--name       \tname" >&2
+    exit 1
+  fi
+  
+  $NB_CMD destroy Address_Set name=$name
+}
 
 ###########################################################
 ##
