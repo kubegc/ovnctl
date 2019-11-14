@@ -977,7 +977,7 @@ function delete-address()
     exit 1
   fi
   
-  $NB_CMD destroy Address_Set name=$name
+  $NB_CMD destroy Address_Set $name
 }
 
 
