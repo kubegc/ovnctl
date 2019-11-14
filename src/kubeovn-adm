@@ -1161,7 +1161,7 @@ function modify-address()
     exit 1
   fi
   
-  $NB_CMD set Address_Set name=$name address=$addr
+  $NB_CMD set Address_Set $name address=$addr
 }
 
 # ovn-nbctl create Address_Set name=www address=10.10.10.11,10.10.10.13,192.168.96.0/21
