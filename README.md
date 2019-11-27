@@ -50,6 +50,9 @@ SDN for Kubernetes network
   - https://www.sdnlab.com/19802.html
   - https://www.cnblogs.com/silvermagic/p/7666124.html
 
+- QoS：
+  - https://macauleycheng.gitbooks.io/ovn/qos-dscp-configuration.html
+
 - ACLS:
   - http://blog.spinhirne.com/2016/10/ovn-and-acls.html
   - https://blog.csdn.net/zhengmx100/article/details/75431393
