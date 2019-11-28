@@ -67,5 +67,5 @@ SDN for Kubernetes network
   - https://www.twblogs.net/a/5b8118292b71772165aaf9a5
   
  - Bug
-  - https://bugzilla.redhat.com/show_bug.cgi?id=1580542
-  - https://access.redhat.com/errata/RHBA-2019:3718
+   - https://bugzilla.redhat.com/show_bug.cgi?id=1580542
+   - https://access.redhat.com/errata/RHBA-2019:3718
