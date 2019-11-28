@@ -62,3 +62,6 @@ SDN for Kubernetes network
   - http://docs.openvswitch.org/en/latest/howto/vtep/
   - https://hechao.li/2018/05/15/VXLAN-Hands-on-Lab/
   - https://docs.pica8.com/display/picos2102cg/OVSDB+VTEP+with+vtep-ctl+Configuration+Examples
+  
+- Debug
+  - https://www.twblogs.net/a/5b8118292b71772165aaf9a5
