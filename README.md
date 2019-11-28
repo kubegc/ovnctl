@@ -65,3 +65,6 @@ SDN for Kubernetes network
   
 - Debug
   - https://www.twblogs.net/a/5b8118292b71772165aaf9a5
+  
+ - Bug
+  - https://access.redhat.com/errata/RHBA-2019:3718
