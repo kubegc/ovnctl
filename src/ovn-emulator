@@ -132,6 +132,10 @@ function generate-netconfig()
   prefix=$(cat $IFCFG"ifcfg-$nic.bak" |  grep PREFIX)
   gw=$(cat $IFCFG"ifcfg-$nic.bak" | grep GATEWAY)
   dns=$(cat $IFCFG"ifcfg-$nic.bak" | grep DNS)
+  ipv6i=$(cat $IFCFG"ifcfg-$nic.bak" | grep IPV6INIT)
+  ipv6c=$(cat $IFCFG"ifcfg-$nic.bak" | grep IPV6_AUTOCONF)
+  ipv6d=$(cat $IFCFG"ifcfg-$nic.bak" | grep IPV6_DEFROUTE)
+  ipv6a=$(cat $IFCFG"ifcfg-$nic.bak" | grep IPV6ADDR)
   
   sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$name"
   sed -i "s/BRX/$name/g" $IFCFG"ifcfg-$nic"
@@ -146,6 +150,10 @@ function generate-netconfig()
     echo $mask >> $IFCFG"ifcfg-$name"
     echo $prefix >> $IFCFG"ifcfg-$name"
     echo $gw >> $IFCFG"ifcfg-$name"
+    echo $ipv6a >> $IFCFG"ifcfg-$name"
+    echo $ipv6c >> $IFCFG"ifcfg-$name"
+    echo $ipv6d >> $IFCFG"ifcfg-$name"
+    echo $ipv6i >> $IFCFG"ifcfg-$name"
     echo $dns >> $IFCFG"ifcfg-$name"
   fi
 }
