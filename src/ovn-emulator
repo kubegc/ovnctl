@@ -374,7 +374,7 @@ function just-switch()
 
   #dmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
   #dip=$(echo $subn | awk -F"." '{print$1"."$2"."$3}')".128" 
-  did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\"")
+  did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$rip\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$rip\"")
   $NB_CMD lsp-add $name "dhcpv4id-$name-"$did
 }
 
@@ -480,21 +480,11 @@ function create-switch()
 
       if [[ -z $dnss ]]
       then
-        if [[ $ipv4 == "false" ]]
-        then
-          did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\"")
-	else
-	  did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\"")
-	fi  
+        did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\"")
       else
-        if [[ $ipv4 == "false" ]]
-        then
-          did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\" \"dns_server\"=\"$dnss\"")
-	else
-	  did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\" \"dns_server\"=\"$dnss\"")
-	fi
+        did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\" \"dns_server\"=\"$dnss\"")
       fi
-
+      
       if [[ $ipv4 == "false" ]]
       then
         $NB_CMD lsp-add $name "dhcpv6id-$name-"$did
@@ -832,47 +822,6 @@ function delete-switch()
  
 }
 
-function bind-fip()
-{
-  switch=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
-  os=$(echo $* | awk -F"--outSwName" '{print$2}' | awk '{print$1}')
-  bridge=$(echo $* | awk -F"--bridge" '{print$2}' | awk '{print$1}')
-  vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
-  fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
- 
-  if [[ -z $1 || -z $switch || -z $os || -z $vmmac || -z $fip || -z $(echo $fip | grep "/") || $2 == "--help" ]]
-  then
-    cmddesc
-    echo -e "--swName    \tswitch name" >&2
-    echo -e "--outSwName \tout switch name" >&2
-    echo -e "--vmmac     \tvm mac" >&2
-    echo -e "--fip       \tflating ip and mask, for example, 192.168.1.1/24" >&2
-    exit 1
-  fi
-
-  checkOVSStatus
-
-  vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
-
-  router=$switch"-router"
-  fport="public-"${vmmac//:/}"-port"
-  ip=$(echo $fip | awk -F"/" '{print$1}')
-  
-  imac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
-  
-  $NB_CMD lrp-add $router $fport  $imac $fip
-  
-  $NB_CMD lsp-add $os "from-"$fport
-  $NB_CMD lsp-set-type "from-"$fport router
-  $NB_CMD lsp-set-addresses "from-"$fport $imac
-  $NB_CMD lsp-set-options "from-"$fport router-port=$fport
-
-  #$NB_CMD lr-nat-add $router dnat_and_snat $ip $vmip
-  $NB_CMD lr-nat-add $router snat $ip $vmip
-  $NB_CMD lr-nat-add $router dnat $ip $vmip
-  
-}
-
 function delete-switch6()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
@@ -919,6 +868,47 @@ function delete-switch6()
   $NB_CMD lr-del $router >/dev/null  2>&1
   $NB_CMD dhcp-options-del $dhcpid >/dev/null  2>&1  
  
+}
+
+function bind-fip()
+{
+  switch=$(echo $* | awk -F"--swName" '{print$2}' | awk '{print$1}')
+  os=$(echo $* | awk -F"--outSwName" '{print$2}' | awk '{print$1}')
+  bridge=$(echo $* | awk -F"--bridge" '{print$2}' | awk '{print$1}')
+  vmmac=$(echo $* | awk -F"--vmmac" '{print$2}' | awk '{print$1}')
+  fip=$(echo $* | awk -F"--fip" '{print$2}' | awk '{print$1}')
+ 
+  if [[ -z $1 || -z $switch || -z $os || -z $vmmac || -z $fip || -z $(echo $fip | grep "/") || $2 == "--help" ]]
+  then
+    cmddesc
+    echo -e "--swName    \tswitch name" >&2
+    echo -e "--outSwName \tout switch name" >&2
+    echo -e "--vmmac     \tvm mac" >&2
+    echo -e "--fip       \tflating ip and mask, for example, 192.168.1.1/24" >&2
+    exit 1
+  fi
+
+  checkOVSStatus
+
+  vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
+
+  router=$switch"-router"
+  fport="public-"${vmmac//:/}"-port"
+  ip=$(echo $fip | awk -F"/" '{print$1}')
+  
+  imac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
+  
+  $NB_CMD lrp-add $router $fport  $imac $fip
+  
+  $NB_CMD lsp-add $os "from-"$fport
+  $NB_CMD lsp-set-type "from-"$fport router
+  $NB_CMD lsp-set-addresses "from-"$fport $imac
+  $NB_CMD lsp-set-options "from-"$fport router-port=$fport
+
+  #$NB_CMD lr-nat-add $router dnat_and_snat $ip $vmip
+  $NB_CMD lr-nat-add $router snat $ip $vmip
+  $NB_CMD lr-nat-add $router dnat $ip $vmip
+  
 }
 
 function bind-fip()
@@ -1324,6 +1314,7 @@ function create-vm()
   mac=$(echo $* | awk -F"--mac" '{print$2}' | awk '{print$1}')
   ip=$(echo $* | awk -F"--ip" '{print$2}' | awk '{print$1}')
   gway=$(echo $* | awk -F"--gateway" '{print$2}' | awk '{print$1}')
+  ipv4=$(echo $* | awk -F"--ipv4" '{print$2}' | awk '{print$1}')
 
   if [[ -z $1 || -z $name || -z $mac || -z $ip || $2 == "--help" ]]
   then
@@ -1333,6 +1324,7 @@ function create-vm()
     echo -e "--mac        \tMac"  >&2
     echo -e "--ip         \tIP"  >&2
     echo -e "--gateway    \tOptinal, Gateway"  >&2
+    echo -e "--ipv4       \tOptinal, true or false"  >&2
     exit 1
   fi
 
@@ -1355,8 +1347,15 @@ function create-vm()
   sudo $NB_CMD lsp-set-addresses $switch-$name "$mac $ip"
   
   sudo ovs-vsctl set Interface  veth-$name external_ids:iface-id=$switch-$name
-  sudo ip netns exec $name ip addr add $ip/24 dev $name
-  sudo ip netns exec $name ip route add default via $gway
+  
+  if [[ $ipv4 == "fasle" ]]
+  then
+    sudo ip -6 netns exec $name ip -6 addr add $ip/24 dev $name
+    sudo ip -6 netns exec $name ip -6 route add default via $gway
+  else
+    sudo ip netns exec $name ip addr add $ip/24 dev $name
+    sudo ip netns exec $name ip route add default via $gway
+  fi
 }
 
 
@@ -1364,18 +1363,25 @@ function delete-vm()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
   switch=$(echo $* | awk -F"--switch" '{print$2}' | awk '{print$1}') 
+  ipv4=$(echo $* | awk -F"--ipv4" '{print$2}' | awk '{print$1}')
  
   if [[ -z $1 || -z $name || -z $switch || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name       \tVM name" >&2
     echo -e "--switch     \tswitch" >&2
+    echo -e "--ipv4       \tOptinal, true or false"  >&2
     exit 1
   fi
 
   sudo $NB_CMD lsp-del $switch"-"$name >/dev/null  2>&1 
   sudo ovs-vsctl del-port br-int "veth-"$name >/dev/null  2>&1 
-  sudo ip netns del $name >/dev/null  2>&1 
+  if [[ $ipv4 == "fasle" ]]
+  then
+    sudo ip -6 netns del $name >/dev/null  2>&1 
+  else
+    sudo ip netns del $name >/dev/null  2>&1 
+  fi
 }
 
 ###########################################################
