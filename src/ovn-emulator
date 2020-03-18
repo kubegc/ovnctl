@@ -480,9 +480,19 @@ function create-switch()
 
       if [[ -z $dnss ]]
       then
-        did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\"")
+        if [[ $ipv4 == "false" ]]
+        then
+          did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\"")
+	else
+	  did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\"")
+	fi  
       else
-        did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\" \"dns_server\"=\"$dnss\"")
+        if [[ $ipv4 == "false" ]]
+        then
+          did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\" \"dns_server\"=\"$dnss\"")
+	else
+	  did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\" \"dns_server\"=\"$dnss\"")
+	fi
       fi
 
       if [[ $ipv4 == "false" ]]
