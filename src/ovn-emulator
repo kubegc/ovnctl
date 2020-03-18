@@ -392,7 +392,7 @@ function create-switch()
   imtu=$(echo $* | awk -F"--mtu" '{print$2}' | awk '{print$1}')
   excl=$(echo $* | awk -F"--excludeIPs" '{print$2}' | awk '{print$1}')
   dnss=$(echo $* | awk -F"--dnsServer" '{print$2}' | awk '{print$1}')
-  ipv4=$(echo $* | awk -F"--ipv4" '{print$2}' | awk '{print$1}')
+  ipv6=$(echo $* | awk -F"--ipv6" '{print$2}' | awk '{print$1}')
   
   if [[ -z $1 || -z $name || -z $subn || $2 == "--help" ]]
   then
@@ -406,7 +406,7 @@ function create-switch()
     echo -e "--vlanId     \toptinal,vlanId"  >&2
     echo -e "--excludeIPs \toptinal, excludeIPs.  192.168.1.1,192.168.1.10..192.168.1.100"  >&2
     echo -e "--dnsServer  \toptinal, dnsServer.  192.168.1.1"  >&2
-    echo -e "--ipv4       \toptinal, true or false"  >&2
+    echo -e "--ipv6       \toptinal, true or false"  >&2
     exit 1
   fi
 
@@ -485,7 +485,7 @@ function create-switch()
         did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\" \"dns_server\"=\"$dnss\"")
       fi
       
-      if [[ $ipv4 == "false" ]]
+      if [[ $ipv6 == "true" ]]
       then
         $NB_CMD lsp-add $name "dhcpv6id-$name-"$did
       else
@@ -614,7 +614,7 @@ function modify-switch()
   imtu=$(echo $* | awk -F"--mtu" '{print$2}' | awk '{print$1}')
   dnss=$(echo $* | awk -F"--dnsServer" '{print$2}' | awk '{print$1}')
   vlanId=$(echo $* | awk -F"--vlanId" '{print$2}' | awk '{print$1}')
-  ipv4=$(echo $* | awk -F"--ipv4" '{print$2}' | awk '{print$1}')
+  ipv6=$(echo $* | awk -F"--ipv6" '{print$2}' | awk '{print$1}')
 
   if [[ -z $1 || -z $name || $2 == "--help" ]]
   then
@@ -625,11 +625,11 @@ function modify-switch()
     echo -e "--dhcp       \toptinal, dhcp.  for example, 192.168.1.1"  >&2
     echo -e "--mtu        \toptinal, mtu.  for example, 1480"  >&2
     echo -e "--dnsServer  \toptinal, dns server"  >&2
-    echo -e "--ipv4       \toptinal, true or false"  >&2
+    echo -e "--ipv6       \toptinal, true or false"  >&2
     exit 1
   fi
   
-  if [[ $ipv4 == "fasle" ]]
+  if [[ $ipv6 == "true" ]]
   then
     dhcpid=$($NB_CMD show $name | grep "dhcpv6id-$name-" | awk -F "dhcpv6id-$name-" '{print$2}') 
   else
@@ -771,14 +771,14 @@ function delete-switch()
 {
   name=$(echo $* | awk -F"--name" '{print$2}' | awk '{print$1}')
   bridge=$(echo $* | awk -F"--bridge" '{print$2}' | awk '{print$1}')
-  ipv4=$(echo $* | awk -F"--ipv4" '{print$2}' | awk '{print$1}')
+  ipv6=$(echo $* | awk -F"--ipv6" '{print$2}' | awk '{print$1}')
   
   if [[ -z $1 || -z $name || $2 == "--help" ]]
   then
     cmddesc
     echo -e "--name    \tswitch name" >&2
     echo -e "--bridge  \tbridge name" >&2
-    echo -e "--ipv4    \ttrue of false" >&2
+    echo -e "--ipv6    \ttrue of false" >&2
     exit 1
   fi
 
@@ -810,7 +810,7 @@ function delete-switch()
   fi
   
   ## delete
-  if [[ $ipv4 == "fasle" ]]
+  if [[ $ipv6 == "true" ]]
   then
     dhcpid=$($NB_CMD show $name | grep "dhcpv6id-$name-" | awk -F"dhcpv6id-$name-" '{print$2}')
   else
