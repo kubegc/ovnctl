@@ -439,12 +439,7 @@ function create-switch()
       router=$name"-router"
       rport=$name"-router-port"
       
-      if [[ $ipv4 == "false" ]]
-      then
-        rmac=$(printf 'fd15:4ba5:5a2b:1008:%02X%02X:%02X%02X:%02X%02X:%02X%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256] $[RANDOM%256] $[RANDOM%256] $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
-      else
-        rmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
-      fi
+      rmac=$(printf '00:60:2F:%02X:%02X:%02X\n' $[RANDOM%256] $[RANDOM%256] $[RANDOM%256])
  
       $NB_CMD lr-add $router
       $NB_CMD set Logical_router $router options:chassis=$($SB_CMD show | grep -B 3 "$THISIP" | grep Chassis | awk -F"\"" '{print$2}')
@@ -485,9 +480,9 @@ function create-switch()
 
       if [[ -z $dnss ]]
       then
-        did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\"")
+        did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\"")
       else
-        did=$($NB_CMD create DHCP_Options cidr=$subn options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\" \"dns_server\"=\"$dnss\"")
+        did=$($NB_CMD create DHCP_Options cidr=${subn//:/\\:} options="\"server_id\"=\"$dhcp\" \"server_mac\"=\"$rmac\" \"lease_time\"=\"3600\" \"router\"=\"$gway\" \"mtu\"=\"$mtu\" \"dns_server\"=\"$dnss\"")
       fi
 
       if [[ $ipv4 == "false" ]]
