@@ -28,6 +28,60 @@ SDN for Kubernetes network
 - Support CNI [3.x]
 - Support IPv6 [4.x]
 
+# 3. Info
+
+```
+Notes to self: Clustering seems to be doable in OVS > 2.9 (>2.10 preferred). A working example can be seen here:
+
+northd01 (master) == 172.21.239.73
+northd02 == 172.21.238.6
+northd03 == 172.21.238.240
+
+## Primary
+/usr/share/openvswitch/scripts/ovn-ctl --db-nb-addr=172.21.239.73 \
+--db-nb-create-insecure-remote=yes \
+--db-sb-addr=172.21.239.73 \
+--db-sb-create-insecure-remote=yes \
+--db-nb-cluster-local-addr=172.21.239.73 \
+--db-sb-cluster-local-addr=172.21.239.73 \
+--ovn-northd-nb-db=tcp:172.21.239.73:6641,tcp:172.21.238.6:6641,tcp:172.21.238.240:6641 \
+--ovn-northd-sb-db=tcp:172.21.239.73:6642,tcp:172.21.238.6:6642,tcp:172.21.238.240:6642 \
+start_northd
+
+Starting OVN ovsdb-servers and ovn-northd on the node with IP y.y.y.y and joining the cluster started at x.x.x.x
+
+#infra2
+/usr/share/openvswitch/scripts/ovn-ctl --db-nb-addr=172.21.238.6 \
+--db-nb-create-insecure-remote=yes \
+--db-sb-addr=172.21.238.6 \
+--db-sb-create-insecure-remote=yes \
+--db-nb-cluster-local-addr=172.21.238.6 \
+--db-sb-cluster-local-addr=172.21.238.6 \
+--db-nb-cluster-remote-addr=172.21.239.73 \
+--db-sb-cluster-remote-addr=172.21.239.73 \
+--ovn-northd-nb-db=tcp:172.21.239.73:6641,tcp:172.21.238.6:6641,tcp:172.21.238.240:6641 \
+--ovn-northd-sb-db=tcp:172.21.239.73:6642,tcp:172.21.238.6:6642,tcp:172.21.238.240:6642 \
+start_northd
+
+Starting OVN ovsdb-servers and ovn-northd on the node with IP z.z.z.z and joining the cluster started at x.x.x.x
+
+/usr/share/openvswitch/scripts/ovn-ctl --db-nb-addr=172.21.238.240 \
+--db-nb-create-insecure-remote=yes \
+--db-nb-cluster-local-addr=172.21.238.240 \
+--db-sb-addr=172.21.238.240 \
+--db-sb-create-insecure-remote=yes \
+--db-sb-cluster-local-addr=172.21.238.240 \
+--db-nb-cluster-remote-addr=172.21.239.73 \
+--db-sb-cluster-remote-addr=172.21.239.73 \
+--ovn-northd-nb-db=tcp:172.21.239.73:6641,tcp:172.21.238.6:6641,tcp:172.21.238.240:6641 \
+--ovn-northd-sb-db=tcp:172.21.239.73:6642,tcp:172.21.238.6:6642,tcp:172.21.238.240:6642 \
+start_northd
+
+The trick is verifying when this needs to be implemented and how it behaves with subsequent playbook runs.
+
+See full activity log
+```
+
 # Books
 
 - https://feisky.gitbooks.io/sdn/ovs/ovn-internal.html
