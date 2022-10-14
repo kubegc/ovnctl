@@ -38,12 +38,26 @@ TABLE_CONN="Connection"
 TABLE_SSL="SSL"
 TABLE_DHCP="DHCP_Options"
 
-THISIP=$(kubectl get node vm.$(hostname) -o yaml | grep "THISIP:" | awk -F":" 'NR==1{print$2}' | sed 's/ //g')
 
 ## OVN core, please install Kubernetes first
 
-NB_CMD="kubectl ko nbctl"
-SB_CMD="kubectl ko sbctl"
+MASTER=$(cat /root/.kube/config  | grep server |awk -F"server:" '{print$2}' | awk -F"https://" '{print$2}' | awk -F":" '{print$1}')
+#THISIP=$(kubectl get node vm.$(hostname) -o yaml | grep -B 1 "type: InternalIP" | grep address | awk -F": " '{print$2}')
+THISIP=$(kubectl get node vm.$(hostname) -o yaml | grep "THISIP:" | awk -F":" 'NR==1{print$2}' | sed 's/ //g')
+
+NB_PORT="6641"
+SB_PORT="6642"
+
+NB_CMD="ovn-nbctl --db=tcp:$MASTER:$NB_PORT"
+SB_CMD="ovn-sbctl --db=tcp:$MASTER:$SB_PORT"
+
+if [[ -f /etc/ovn.conf ]]
+then
+  ndb=$(cat /etc/ovn.conf|grep ovnnb|awk -F"=" '{print$2}')
+  NB_CMD="ovn-nbctl --db=$ndb"
+  sdb=$(cat /etc/ovn.conf|grep ovnsb|awk -F"=" '{print$2}')
+  SB_CMD="ovn-sbctl --db=$sdb"
+fi
 
 ###########################################################
 ##
@@ -98,6 +112,69 @@ function checkDHCP()
 ##  init env
 ##
 ##########################################################
+
+function start-central()
+{
+  
+  #start-worker
+
+  systemctl start   ovn-ovsdb
+  systemctl enable  ovn-ovsdb
+  systemctl start   ovn-northd
+  systemctl enable  ovn-northd
+  systemctl start   ovn-controller
+  systemctl enable  ovn-controller
+
+  #sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
+  #sudo ovs-vsctl set open . external-ids:ovn-remote=unix:/usr/var/run/openvswitch/ovnsb_db.sock
+  #sudo ovs-vsctl set open . external-ids:ovn-encap-ip=127.0.0.1
+  #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
+  #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
+}
+
+function stop-central()
+{
+  stop-worker
+
+  systemctl stop    ovn-ovsdb
+  systemctl disable ovn-ovsdb
+  systemctl stop    ovn-northd
+  systemctl disable ovn-northd
+}
+
+function start-worker()
+{
+
+  systemctl start   openvswitch
+  systemctl enable  openvswitch
+  systemctl start   ovn-controller
+  systemctl enable  ovn-controller
+
+  sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
+  #sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
+  sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
+  if [[ -f /etc/ovn.conf ]]
+  then
+    sdb=$(cat /etc/ovn.conf | grep ovnsb | awk -F"=" '{print$2}' | awk -F"," '{print$1}')
+    sudo ovs-vsctl set open . external-ids:ovn-remote=$sdb
+  else
+    sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$MASTER:6642
+  fi
+  sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$THISIP
+  if [[ -f /etc/ovn.conf ]]
+  then
+    ndb=$(cat /etc/ovn.conf|grep ovnnb|awk -F"=" '{print$2}')
+    sudo ovs-vsctl set open . external-ids:ovn-nb=$ndb
+  else
+    sudo ovs-vsctl set open . external-ids:ovn-nb="tcp:$MASTER:6641"
+  fi
+}
+
+function stop-worker()
+{
+  systemctl stop    ovn-controller
+  systemctl disable ovn-controller
+}
 
 function clear()
 {
