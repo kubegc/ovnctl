@@ -11,7 +11,7 @@
 
 ## OVN plugin version
 
-VERSION="1.6.0"
+VERSION="2.0.0"
 IFCFG="/etc/sysconfig/network-scripts/"
 
 ## OVN Tables
@@ -1250,10 +1250,6 @@ function help()
 {
   cmddesc
   echo -e "Commands:"
-  echo -e "  start-central  :\t(Init): Start central node"
-  echo -e "  stop-central   :\t(Init): Stop  central node"
-  echo -e "  start-worker   :\t(Init): Start worker  node"
-  echo -e "  stop-worker    :\t(Init): Stop  worker  node"
   echo -e "  create-bridge  :\t(L2  ): Create L2 bridge"
   echo -e "  create-bridge  :\t(L2  ): Create L2 bridge"
   echo -e "  setbridge-vlan :\t(L2  ): Set L2 bridge vlan"
@@ -1280,18 +1276,6 @@ function help()
 
 
 case $1 in
-  "start-central")
-    start-central $*
-    ;;
-  "stop-central")
-    stop-central $*
-    ;;
-  "start-worker")
-    start-worker $*
-    ;;
-  "stop-worker")
-    stop-worker $*
-    ;;
   "create-bridge")
     create-bridge $*
     ;;
