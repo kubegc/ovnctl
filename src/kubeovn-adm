@@ -1250,12 +1250,12 @@ function help()
 {
   cmddesc
   echo -e "Commands:"
-  echo -e "  create-bridge  :\t(L2  ): Create L2 bridge"
-  echo -e "  create-bridge  :\t(L2  ): Create L2 bridge"
-  echo -e "  setbridge-vlan :\t(L2  ): Set L2 bridge vlan"
-  echo -e "  delbridge-vlan :\t(L2  ): Delete L2 bridge vlan"
-  echo -e "  create-fip     :\t(L2  ): Create L2's floating IP"
-  echo -e "  delete-fip     :\t(L2  ): Delete L2's floating IP"
+#  echo -e "  create-bridge  :\t(L2  ): Create L2 bridge"
+#  echo -e "  create-bridge  :\t(L2  ): Create L2 bridge"
+#  echo -e "  setbridge-vlan :\t(L2  ): Set L2 bridge vlan"
+#  echo -e "  delbridge-vlan :\t(L2  ): Delete L2 bridge vlan"
+#  echo -e "  create-fip     :\t(L2  ): Create L2's floating IP"
+#  echo -e "  delete-fip     :\t(L2  ): Delete L2's floating IP"
   echo -e "  create-switch  :\t(L3  ): Create L3 switch and gateway"
   echo -e "  modify-switch  :\t(L3  ): Modify L3 switch's config"
   echo -e "  delete-switch  :\t(L3  ): Remove L3 switch and gateway, see remove-switch"
@@ -1276,18 +1276,24 @@ function help()
 
 
 case $1 in
-  "create-bridge")
-    create-bridge $*
-    ;;
-  "delete-bridge")
-    delete-bridge $*
-    ;;
-  "setbridge-vlan")
-    setbridge-vlan $*
-    ;;
-  "delbridge-vlan")
-    delbridge-vlan $*
-    ;;
+#  "create-bridge")
+#    create-bridge $*
+#    ;;
+#  "delete-bridge")
+#    delete-bridge $*
+#    ;;
+#  "setbridge-vlan")
+#    setbridge-vlan $*
+#    ;;
+#  "delbridge-vlan")
+#    delbridge-vlan $*
+#    ;;
+#  "create-fip")
+#    create-fip $*
+#    ;;
+#  "delete-fip")
+#    delete-fip $*
+#    ;;
   "create-switch")
     create-switch $*
     ;;
@@ -1302,12 +1308,6 @@ case $1 in
     ;;
   "unbind-swport")
     unbind-swport $*
-    ;;
-  "create-fip")
-    create-fip $*
-    ;;
-  "delete-fip")
-    delete-fip $*
     ;;
   "create-address")
     create-address $*
