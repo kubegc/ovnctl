@@ -587,7 +587,7 @@ function delete-switch()
   fi
 
   ## check
-  checkOVSStatus
+  # checkOVSStatus
   
   sid=$($NB_CMD ls-list | grep "($name)" | awk '{print$1}')
   if [[ -z $sid ]]
@@ -846,7 +846,7 @@ function bind-fip()
     exit 1
   fi
 
-  checkOVSStatus
+  #checkOVSStatus
 
   vmip=$($NB_CMD list logical_switch_port  | grep "$vmmac" | awk -F"\"" '{print$2}' | awk '{print$2}')
 
@@ -888,7 +888,7 @@ function unbind-fip()
     exit 1
   fi
 
-  checkOVSStatus
+  #checkOVSStatus
 
   router=$switch"-router"
   port1="public-"${vmmac//:/}"-port"
