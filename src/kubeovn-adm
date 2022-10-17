@@ -53,8 +53,8 @@ SB_CMD="kubectl ko sbctl"
 
 function checkOVSStatus()
 {
-  res=$(systemctl status openvswitch | grep Active | awk -F":" '{print $2}' | awk '{print$1}')
-  if [[ $res != "active" ]]
+  res=$(ovs-vsctl show | grep ovs_version | wc -l)
+  if [[ $res != 1 ]]
   then
     echo "please start openvswitch first" >&2
     exit 1
